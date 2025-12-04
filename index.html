@@ -1,674 +1,605 @@
 <!DOCTYPE html>
-
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DDT Reso DEMA</title>
-<!-- Carica Tailwind CSS per lo styling -->
-<script src="https://www.google.com/search?q=https://cdn.tailwindcss.com"></script>
-<!-- Configurazione per il font Inter e il tema (opzionale) -->
-<style>
-@import url('https://www.google.com/search?q=https://fonts.googleapis.com/css2%3Ffamily%3DInter:wght%40100..900%26display%3Dswap');
-body { font-family: 'Inter', sans-serif; }
-
-    /* Stili specifici per la stampa (A4) */
-    @page {
-        size: A4;
-        margin: 0;
-    }
-    @media print {
-        body { margin: 0; }
-        /* Forza le dimensioni A4 per l'elemento di stampa */
-        .print-area {
-            width: 210mm !important;
-            min-height: 297mm !important;
-            margin: 0 !important;
-            padding: 10mm !important; /* Margini interni di 1cm */
-            box-shadow: none !important;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DDT Reso DEMA - Stabile</title>
+    <!-- Carica Tailwind CSS per lo styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Stili specifici per la stampa (A4) */
+        @page {
+            size: A4;
+            margin: 0;
         }
-        /* Assicura che i font per la stampa siano leggibili */
-        .print-area * {
-            color: black !important;
+        @media print {
+            body { margin: 0; }
+            /* Forza le dimensioni A4 per l'elemento di stampa */
+            .print-area {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 !important;
+                padding: 10mm !important; /* Margini interni di 1cm */
+                box-shadow: none !important;
+            }
+            .print-area * { color: black !important; }
+            .print\:hidden { display: none !important; }
+            /* Dimensioni font ottimizzate per A4 */
+            .print\:text-\[10pt\] * { font-size: 10pt !important; }
+            .print\:text-lg { font-size: 14pt !important; }
+            .print\:text-base { font-size: 12pt !important; }
+            .print\:text-xs { font-size: 9pt !important; }
+            .print\:border-r { border-right-width: 1px !important; }
+            .print\:bg-transparent { background-color: transparent !important; }
+            /* Altezza riga ridotta per A4 */
+            .print-row-h { height: 16px; }
         }
-        /* Nasconde i controlli utente durante la stampa */
-        .print\:hidden { display: none !important; }
-        /* Ridimensionamento font per la stampa su A4 */
-        .print\:text-\[10pt\] * { font-size: 10pt !important; }
-        .print\:text-lg { font-size: 18pt !important; }
-        .print\:text-base { font-size: 16pt !important; }
-        .print\:text-xs { font-size: 10pt !important; }
-        .print\:border-r { border-right-width: 1px !important; }
-        .print\:bg-transparent { background-color: transparent !important; }
-    }
-</style>
-
-
+    </style>
 </head>
 <body>
-<div id="root"></div>
+    <div id="root"></div>
 
-<!-- React e Babel per la compilazione in-browser -->
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<!-- Lucide Icons (per le icone Plus, Minus, etc.) -->
-<script type="module">
-    import * as lucide from 'https://unpkg.com/lucide-react@latest/dist/lucide-react.js';
-    window.lucide = lucide;
-</script>
+    <!-- React e ReactDOM (Non rimuoverli, sono essenziali per l'app) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-<script type="text/babel">
-    const { useState, useEffect } = React;
-    // Importa le icone da lucide-react (disponibili globalmente grazie allo script type="module")
-    const { Plus, Minus, Printer, Search, FilePlus, ArrowLeft, Pencil, MapPin } = window.lucide || {};
-
-    // Funzione per inizializzare o caricare i prodotti salvati
-    const getInitialProducts = () => {
-        const INITIAL_PRODUCTS = [
-          // COLONNA SINISTRA (Pane e derivati freschi)
-          { id: 1, name: 'Impasto', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 2, name: 'Pagnotta', weight: '2,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 3, name: 'Pagnotta', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 4, name: 'Filone', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 5, name: 'Filone casareccio', weight: '0,700', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 6, name: 'Pagnotella', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 7, name: 'Sfilatino', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 8, name: 'Pagnotella integrale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 9, name: 'Sfilatino integrale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 10, name: 'Ciambella', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 11, name: 'Pizza col buco', weight: '0,400', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 12, name: 'Fruste', weight: '0,400', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 13, name: 'Baguette', weight: '0,300', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 14, name: 'Ciabattine lunghe', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 15, name: 'Ciabattine tonde', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 16, name: 'Francesino', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 17, name: 'Zoccoletto', weight: '0,120', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 18, name: 'Mignon', weight: '0,080', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 19, name: 'Mignon integrale', weight: '0,080', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 20, name: 'Pane senza sale', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 21, name: 'Pane di saraolla', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 22, name: 'Pane di saraolla Kg1', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 23, name: 'Pane rosso', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 24, name: 'Zzora', weight: '0,600', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 25, name: 'Pane di Segale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 26, name: 'Tortani con cicole', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 27, name: 'Pane Proteico', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 28, name: 'Margherita', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 29, name: 'Marinara', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 30, name: 'Scarola', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 31, name: 'Broccoli/salsicce', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 32, name: 'Focaccia bianca', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 33, name: 'Parigina', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 34, name: 'Cornetti Vari Gusti', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 35, name: 'Ciambelle', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 36, name: 'Rusticini mignon', weight: '', unit: 'kg', category: 'fresh', defaultQty: 0 },
-          { id: 37, name: 'Rustici Grandi', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 38, name: 'Pizzette Mignon', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 39, name: 'focaccia pomodorini', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-          { id: 40, name: 'focaccia pomodorini crud', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-
-          // COLONNA DESTRA (Secchi, Farine, Dolci)
-          { id: 50, name: 'La Biscotta Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 51, name: 'La Fresella Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 52, name: 'Fresella tonda Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 53, name: 'Crostini/Crostini s.sale', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 54, name: 'Tarallini monoporzione', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 55, name: 'Treccine/B. pizza', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 56, name: 'Taralli tipo margellina', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 57, name: 'Pan grattato', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 58, name: 'Pan grattato', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 59, name: 'Mollica per ripieni', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 60, name: 'Farina tipo "00"', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 61, name: 'Farina grano duro', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 62, name: 'Farina integrale', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 63, name: 'Farina di mais', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 64, name: 'Biscottini alle mandorle', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 65, name: 'Biscottini vari gusti', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 66, name: 'Pan di spagna', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 67, name: 'Pastarelle', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 68, name: 'Ancinetti/prussianine', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 69, name: 'Migliacci/Pastiere', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 70, name: 'Scaldati/Cresciuti', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 71, name: 'Casatiello/Pizza chiena', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-          { id: 72, name: 'Uova', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 73, name: 'calzone pomodoro', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 74, name: 'calzone prosciutto', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 75, name: 'pizza wurstel e patatine', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 76, name: 'pizza pomodorini e mozzarella', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-          { id: 77, name: 'focaccia senza pomodori', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-        ];
+    <script>
+        // Alias per React.createElement per rendere il codice più compatto
+        const e = React.createElement;
+        const { useState, useEffect } = React;
         
-        try {
-            // Tentativo di caricare i prodotti da localStorage per la persistenza
-            const savedProducts = localStorage.getItem('ddt_products');
-            if (savedProducts) {
-                // Mappa i prodotti salvati e assicurati che abbiano defaultQty (in caso di vecchi salvataggi)
-                const parsedProducts = JSON.parse(savedProducts);
-                // Combina i prodotti iniziali con quelli salvati (mantenendo i nuovi custom)
-                const initialMap = new Map(INITIAL_PRODUCTS.map(p => [p.id, p]));
-                
-                const combinedProducts = parsedProducts.map(p => {
-                  if(initialMap.has(p.id)){
-                    // Se è un prodotto iniziale, usa il nome/peso originale (in caso di aggiornamento) ma mantieni la quantità
-                    return { ...initialMap.get(p.id), defaultQty: p.defaultQty === '' ? '' : (parseInt(p.defaultQty) || 0) };
-                  }
-                  // Se è un prodotto custom, usa i dati salvati
-                  return { ...p, defaultQty: p.defaultQty === '' ? '' : (parseInt(p.defaultQty) || 0) };
-                });
+        // =================================================================
+        // DEFINIZIONI SVG INLINE PER STABILITÀ (RIMOSSA DIPENDENZA ESTERNA)
+        // =================================================================
 
-                // Aggiunge i prodotti iniziali che non erano presenti nei salvataggi (nel caso mancassero)
-                const savedIds = new Set(combinedProducts.map(p => p.id));
-                INITIAL_PRODUCTS.forEach(p => {
-                    if (!savedIds.has(p.id)) {
-                        combinedProducts.push(p);
-                    }
-                });
+        const Icon = (svg, props) => e('svg', { 
+            xmlns: "http://www.w3.org/2000/svg",
+            width: props.size || 24,
+            height: props.size || 24,
+            viewBox: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: 2,
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            ...props 
+        }, e('g', { dangerouslySetInnerHTML: { __html: svg } }));
 
-                // Assicurati che i prodotti custom abbiano un ID alto
-                const nextCustomId = combinedProducts.reduce((max, p) => Math.max(max, p.id), 0) + 1;
-                
-                return combinedProducts
-                    .map(p => ({
-                        ...p,
-                        // Assegna un ID stabile ai nuovi custom se necessario
-                        id: p.category === 'custom' && p.id < 1000 ? p.id + nextCustomId : p.id // Fix per ID custom
-                    }))
-                    .sort((a, b) => a.id - b.id);
+        const Plus = (props) => Icon(`<line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />`, props);
+        const Minus = (props) => Icon(`<line x1="5" y1="12" x2="19" y2="12" />`, props);
+        const Printer = (props) => Icon(`<polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" rx="2" />`, props);
+        const Search = (props) => Icon(`<circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />`, props);
+        const FilePlus = (props) => Icon(`<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" />`, props);
+        const ArrowLeft = (props) => Icon(`<line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />`, props);
+        const Pencil = (props) => Icon(`<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />`, props);
+        const MapPin = (props) => Icon(`<path d="M12 21.75l-4-4.5c-3.3-3.7-3.3-9.1 0-12.8 3.7-3.3 9.1-3.3 12.8 0 3.3 3.7 3.3 9.1 0 12.8l-4 4.5z" /><circle cx="12" cy="10" r="3" />`, props);
+
+
+        // Funzione per inizializzare o caricare i prodotti salvati
+        const getInitialProducts = () => {
+            const INITIAL_PRODUCTS = [
+              // COLONNA SINISTRA (Pane e derivati freschi)
+              { id: 1, name: 'Impasto', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 2, name: 'Pagnotta', weight: '2,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 3, name: 'Pagnotta', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 4, name: 'Filone', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 5, name: 'Filone casareccio', weight: '0,700', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 6, name: 'Pagnotella', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 7, name: 'Sfilatino', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 8, name: 'Pagnotella integrale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 9, name: 'Sfilatino integrale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 10, name: 'Ciambella', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 11, name: 'Pizza col buco', weight: '0,400', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 12, name: 'Fruste', weight: '0,400', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 13, name: 'Baguette', weight: '0,300', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 14, name: 'Ciabattine lunghe', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 15, name: 'Ciabattine tonde', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 16, name: 'Francesino', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 17, name: 'Zoccoletto', weight: '0,120', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 18, name: 'Mignon', weight: '0,080', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 19, name: 'Mignon integrale', weight: '0,080', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 20, name: 'Pane senza sale', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 21, name: 'Pane di saraolla', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 22, name: 'Pane di saraolla Kg1', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 23, name: 'Pane rosso', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 24, name: 'Zzora', weight: '0,600', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 25, name: 'Pane di Segale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 26, name: 'Tortani con cicole', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 27, name: 'Pane Proteico', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 28, name: 'Margherita', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 29, name: 'Marinara', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 30, name: 'Scarola', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 31, name: 'Broccoli/salsicce', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 32, name: 'Focaccia bianca', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 33, name: 'Parigina', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 34, name: 'Cornetti Vari Gusti', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 35, name: 'Ciambelle', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 36, name: 'Rusticini mignon', weight: '', unit: 'kg', category: 'fresh', defaultQty: 0 },
+              { id: 37, name: 'Rustici Grandi', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 38, name: 'Pizzette Mignon', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 39, name: 'focaccia pomodorini', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+              { id: 40, name: 'focaccia pomodorini crud', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
+
+              // COLONNA DESTRA (Secchi, Farine, Dolci)
+              { id: 50, name: 'La Biscotta Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 51, name: 'La Fresella Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 52, name: 'Fresella tonda Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 53, name: 'Crostini/Crostini s.sale', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 54, name: 'Tarallini monoporzione', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 55, name: 'Treccine/B. pizza', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 56, name: 'Taralli tipo margellina', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 57, name: 'Pan grattato', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 58, name: 'Pan grattato', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 59, name: 'Mollica per ripieni', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 60, name: 'Farina tipo "00"', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 61, name: 'Farina grano duro', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 62, name: 'Farina integrale', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 63, name: 'Farina di mais', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 64, name: 'Biscottini alle mandorle', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 65, name: 'Biscottini vari gusti', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 66, name: 'Pan di spagna', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 67, name: 'Pastarelle', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 68, name: 'Ancinetti/prussianine', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 69, name: 'Migliacci/Pastiere', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 70, name: 'Scaldati/Cresciuti', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 71, name: 'Casatiello/Pizza chiena', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
+              { id: 72, name: 'Uova', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 73, name: 'calzone pomodoro', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 74, name: 'calzone prosciutto', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 75, name: 'pizza wurstel e patatine', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 76, name: 'pizza pomodorini e mozzarella', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+              { id: 77, name: 'focaccia senza pomodori', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
+            ];
+            
+            try {
+                const savedProducts = localStorage.getItem('ddt_products');
+                if (savedProducts) {
+                    const parsedProducts = JSON.parse(savedProducts);
+                    const initialMap = new Map(INITIAL_PRODUCTS.map(p => [p.id, p]));
+                    
+                    const combinedProducts = parsedProducts.map(p => {
+                      if(initialMap.has(p.id)){
+                        // Usa il nome/peso originale, ma mantieni la quantità salvata
+                        return { ...initialMap.get(p.id), defaultQty: p.defaultQty === '' ? '' : (parseInt(p.defaultQty) || 0) };
+                      }
+                      // Prodotto custom
+                      return { ...p, defaultQty: p.defaultQty === '' ? '' : (parseInt(p.defaultQty) || 0), category: p.category || 'custom' };
+                    });
+
+                    // Aggiunge i prodotti iniziali che non erano presenti nei salvataggi (per gli aggiornamenti)
+                    const savedIds = new Set(combinedProducts.map(p => p.id));
+                    INITIAL_PRODUCTS.forEach(p => {
+                        if (!savedIds.has(p.id)) {
+                            combinedProducts.push(p);
+                        }
+                    });
+
+                    return combinedProducts
+                        .sort((a, b) => a.id - b.id);
+                }
+            } catch (error) {
+                console.error("Errore nel caricamento da localStorage:", error);
+                // Se c'è un errore nel parsing, ritorna i prodotti iniziali
+                return INITIAL_PRODUCTS;
             }
-        } catch (error) {
-            console.error("Errore nel caricamento da localStorage:", error);
-            // In caso di errore, ritorna i dati iniziali
             return INITIAL_PRODUCTS;
-        }
-        return INITIAL_PRODUCTS;
-    };
+        };
 
-    const saveProducts = (products) => {
-        try {
-            // Salva solo l'ID, il nome, la categoria e la quantità per alleggerire il salvataggio
-            const dataToSave = products.map(p => ({
-                id: p.id, 
-                name: p.name, 
-                weight: p.weight,
-                unit: p.unit,
-                category: p.category,
-                // Salva la quantità come stringa vuota o numero
-                defaultQty: p.defaultQty
-            }));
-            localStorage.setItem('ddt_products', JSON.stringify(dataToSave));
-        } catch (error) {
-            console.error("Errore nel salvataggio in localStorage:", error);
-        }
-    };
+        const saveProducts = (products) => {
+            try {
+                const dataToSave = products.map(p => ({
+                    id: p.id, 
+                    name: p.name, 
+                    weight: p.weight,
+                    unit: p.unit,
+                    category: p.category,
+                    defaultQty: p.defaultQty
+                }));
+                localStorage.setItem('ddt_products', JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error("Errore nel salvataggio in localStorage:", error);
+            }
+        };
 
 
-    function App() {
-      const [products, setProducts] = useState(getInitialProducts);
-      const [view, setView] = useState('input'); // 'input' | 'preview'
-      const [searchTerm, setSearchTerm] = useState('');
-      // Stato per gestire la sede di stampa (Benevento o Montesarchio)
-      const [currentLocation, setCurrentLocation] = useState(localStorage.getItem('ddt_location') || 'benevento'); // 'benevento' | 'montesarchio'
-      
-      // Modal State
-      const [showAddModal, setShowAddModal] = useState(false);
-      const [editingId, setEditingId] = useState(null); // ID del prodotto in modifica, null se nuovo
-      
-      // Form State
-      const [newProdName, setNewProdName] = useState('');
-      const [newProdWeight, setNewProdWeight] = useState('');
-      const [newProdUnit, setNewProdUnit] = useState('pz');
+        function App() {
+          const [products, setProducts] = useState(getInitialProducts);
+          const [view, setView] = useState('input');
+          const [searchTerm, setSearchTerm] = useState('');
+          const [currentLocation, setCurrentLocation] = useState(localStorage.getItem('ddt_location') || 'benevento');
+          
+          const [showAddModal, setShowAddModal] = useState(false);
+          const [editingId, setEditingId] = useState(null);
+          
+          const [newProdName, setNewProdName] = useState('');
+          const [newProdWeight, setNewProdWeight] = useState('');
+          const [newProdUnit, setNewProdUnit] = useState('pz');
 
-      // Sincronizza i prodotti con localStorage ad ogni modifica
-      useEffect(() => {
-          saveProducts(products);
-          localStorage.setItem('ddt_location', currentLocation);
-      }, [products, currentLocation]);
+          // Controlla che gli ID dei prodotti custom siano alti per evitare collisioni
+          const nextCustomId = products.reduce((max, p) => p.id > 1000 ? Math.max(max, p.id) : 1000, 1000) + 1;
 
 
-      // Dettagli Sede
-      const locationDetails = {
-        benevento: {
-          sede: 'Via Napoli',
-          citta: 'Benevento',
-        },
-        montesarchio: {
-          sede: 'Via Giovanni Amendola',
-          citta: 'Montesarchio (BN)',
-        }
-      };
+          useEffect(() => {
+              saveProducts(products);
+              localStorage.setItem('ddt_location', currentLocation);
+          }, [products, currentLocation]);
 
-      // Gestione Quantità
-      const updateQuantity = (id, delta) => {
-        setProducts(prev => prev.map(p => {
-          if (p.id === id) {
-            // Assicurati che la quantità sia un numero prima di operare
-            const currentQty = parseInt(p.defaultQty) || 0;
-            const newQty = Math.max(0, currentQty + delta);
-            // Mantieni come stringa vuota se è 0, altrimenti numero
-            return { ...p, defaultQty: newQty === 0 ? '' : newQty };
-          }
-          return p;
-        }));
-      };
-
-      const handleManualInput = (id, value) => {
-        // Permette l'input vuoto o numeri interi validi
-        const qty = value === '' ? '' : (parseInt(value) || 0); 
-        setProducts(prev => prev.map(p => p.id === id ? { ...p, defaultQty: qty } : p));
-      };
-      
-      const getFinalQuantity = (qty) => {
-          // Converte il valore in stringa vuota se è zero o stringa vuota
-          // Questo è il valore che appare nella colonna "N°"
-          return qty === '' || qty === 0 ? '' : qty;
-      }
-
-
-      // Apertura Modale per NUOVO prodotto
-      const openAddModal = () => {
-        setEditingId(null);
-        setNewProdName('');
-        setNewProdWeight('');
-        setNewProdUnit('pz');
-        setShowAddModal(true);
-      };
-
-      // Apertura Modale per MODIFICA prodotto
-      const openEditModal = (product) => {
-        setEditingId(product.id);
-        setNewProdName(product.name);
-        setNewProdWeight(product.weight);
-        setNewProdUnit(product.unit);
-        setShowAddModal(true);
-      };
-
-      // Salvataggio (Nuovo o Modifica)
-      const handleSaveProduct = () => {
-        if (!newProdName) return;
-
-        if (editingId !== null) {
-          // MODIFICA ESISTENTE
-          setProducts(prev => prev.map(p => 
-            p.id === editingId 
-              ? { ...p, name: newProdName, weight: newProdWeight, unit: newProdUnit }
-              : p
-          ));
-        } else {
-          // AGGIUNTA NUOVO
-          // Trova l'ID più alto e aggiungi un offset per distinguere i custom
-          const maxId = products.reduce((max, p) => Math.max(max, p.id), 0);
-          const newId = maxId + 1;
-          const newProduct = {
-            id: newId,
-            name: newProdName,
-            weight: newProdWeight,
-            unit: newProdUnit,
-            category: 'custom', // Categoria per i prodotti aggiunti dall'utente
-            defaultQty: 1
+          const locationDetails = {
+            benevento: { sede: 'Via Napoli', citta: 'Benevento' },
+            montesarchio: { sede: 'Via Giovanni Amendola', citta: 'Montesarchio (BN)' }
           };
-          setProducts(prev => [...prev, newProduct].sort((a, b) => a.id - b.id));
+
+          const updateQuantity = (id, delta) => {
+            setProducts(prev => prev.map(p => {
+              if (p.id === id) {
+                const currentQty = parseInt(p.defaultQty) || 0;
+                const newQty = Math.max(0, currentQty + delta);
+                // Ritorna una stringa vuota per 0 per facilitare il check
+                return { ...p, defaultQty: newQty === 0 ? '' : newQty };
+              }
+              return p;
+            }));
+          };
+
+          const handleManualInput = (id, value) => {
+            // Assicura che l'input sia un numero o una stringa vuota
+            const qty = value === '' ? '' : (parseInt(value) || 0); 
+            setProducts(prev => prev.map(p => p.id === id ? { ...p, defaultQty: qty } : p));
+          };
+          
+          const getFinalQuantity = (qty) => {
+              // Ritorna stringa vuota per la stampa se la quantità è 0 o vuota
+              return qty === '' || qty === 0 ? '' : qty;
+          }
+
+          const openAddModal = () => {
+            setEditingId(null);
+            setNewProdName('');
+            setNewProdWeight('');
+            setNewProdUnit('pz');
+            setShowAddModal(true);
+          };
+
+          const openEditModal = (product) => {
+            setEditingId(product.id);
+            setNewProdName(product.name);
+            setNewProdWeight(product.weight);
+            setNewProdUnit(product.unit);
+            setShowAddModal(true);
+          };
+
+          const handleSaveProduct = () => {
+            if (!newProdName) return;
+
+            if (editingId !== null) {
+              setProducts(prev => prev.map(p => 
+                p.id === editingId 
+                  ? { ...p, name: newProdName, weight: newProdWeight, unit: newProdUnit }
+                  : p
+              ));
+            } else {
+              const newProduct = {
+                id: nextCustomId, // Usa l'ID calcolato
+                name: newProdName,
+                weight: newProdWeight,
+                unit: newProdUnit,
+                category: 'custom',
+                defaultQty: 1
+              };
+              // Aggiunge e riordina per ID per mantenere i custom in fondo
+              setProducts(prev => [...prev, newProduct].sort((a, b) => a.id - b.id));
+            }
+
+            setShowAddModal(false);
+            setEditingId(null);
+            setNewProdName('');
+            setNewProdWeight('');
+          };
+
+          const filteredProducts = products.filter(p => 
+            p.name.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+
+          const today = new Date().toLocaleDateString('it-IT');
+
+          const col1 = products.filter(p => p.category === 'fresh').sort((a, b) => a.id - b.id);
+          const printCol2 = products.filter(p => p.category === 'dry' || p.category === 'custom').sort((a, b) => a.id - b.id);
+
+          const totalPrintableRows = 45;
+          const rowsCol1 = col1.length;
+          const rowsCol2 = printCol2.length;
+          
+          const emptyRowsLeft = Math.max(0, totalPrintableRows - rowsCol1);
+          // La colonna di destra ha una riga in meno perché c'è il blocco "Il conducente" sotto la tabella
+          const emptyRowsRight = Math.max(0, totalPrintableRows - 1 - rowsCol2); 
+
+
+          const handlePrint = () => {
+            window.print();
+          };
+
+          // --- VISTA ANTEPRIMA / STAMPA ---
+          if (view === 'preview') {
+            const currentLoc = locationDetails[currentLocation];
+            
+            // Helper per la riga della tabella
+            const TableRow = (p, isCol1, index) => e('tr', { key: p.id || `empty-${index}`, className: "border-b border-gray-300 print-row-h" },
+                e('td', { className: "border-r border-black text-center text-gray-400" }, p.id || ''),
+                e('td', { className: "border-r border-black pl-1 truncate font-medium" }, p.name || ''),
+                e('td', { className: "border-r border-black text-center" }, isCol1 ? (p.weight || '') : (p.unit || '')),
+                e('td', { className: "text-center font-bold text-black text-xs" }, getFinalQuantity(p.defaultQty)),
+            );
+
+            // Righe vuote
+            const EmptyRow = (keyPrefix, count) => Array(count).fill(null).map((_, i) => e('tr', { key: `${keyPrefix}-${i}`, className: "border-b border-gray-300 print-row-h" },
+                e('td', { className: "border-r border-black" }), 
+                e('td', { className: "border-r border-black" }), 
+                e('td', { className: "border-r border-black" }), 
+                e('td', null)
+            ));
+
+
+            return e('div', { className: "bg-gray-100 min-h-screen p-2 md:p-4 flex flex-col items-center" },
+              // Controlli Anteprima (Nascosti in stampa)
+              e('div', { className: "print:hidden w-full max-w-lg md:max-w-4xl mb-4 flex flex-col space-y-3 bg-white p-4 shadow rounded-lg" },
+                e('div', { className: "flex justify-between items-center" },
+                  e('button', { 
+                    onClick: () => setView('input'), 
+                    className: "flex items-center text-gray-700 font-semibold text-sm"
+                  },
+                    e(ArrowLeft, { className: "mr-2 h-4 w-4" }), "Torna alle Modifiche"
+                  ),
+                  e('button', { 
+                    onClick: handlePrint,
+                    className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center shadow-lg hover:bg-blue-700 transition text-sm"
+                  },
+                    e(Printer, { className: "mr-2 h-4 w-4" }), "Stampa / Salva PDF"
+                  )
+                ),
+                // TOGGLE SEDE
+                e('div', { className: "flex items-center justify-center space-x-2 p-2 bg-gray-50 rounded-lg border" },
+                  e(MapPin, { className: "h-4 w-4 text-gray-500" }),
+                  e('span', { className: "text-sm font-semibold text-gray-700" }, "Sede di Partenza:"),
+                  e('button', {
+                    onClick: () => setCurrentLocation('benevento'),
+                    className: `px-3 py-1 text-xs font-bold rounded-full transition ${currentLocation === 'benevento' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600 border'}`
+                  }, "Benevento"),
+                  e('button', {
+                    onClick: () => setCurrentLocation('montesarchio'),
+                    className: `px-3 py-1 text-xs font-bold rounded-full transition ${currentLocation === 'montesarchio' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600 border'}`
+                  }, "Montesarchio")
+                )
+              ),
+              
+              // FOGLIO A4 VIRTUALE
+              e('div', { className: "print-area bg-white w-full max-w-4xl min-h-0 shadow-2xl p-2 md:p-4 text-black print:shadow-none print:m-0 print:p-[10mm] print:text-[10pt]" },
+                // INTESTAZIONE: TITOLO E DETTAGLI AZIENDA
+                e('div', { className: "border-2 border-black mb-1" },
+                  // Titolo DDT
+                  e('div', { className: "text-center font-bold text-xs print:text-base border-b border-black py-0.5 px-1 bg-gray-100 print:bg-transparent" },
+                    `DDT DI RESO N. _________ del ${today}`
+                  ),
+                  // Intestazione Azienda
+                  e('div', { className: "grid grid-cols-2 print:grid-cols-2" },
+                    // COLONNA SINISTRA: DATI AZIENDA MITTENTE
+                    e('div', { className: "p-1 border-r border-black text-[9px] print:text-xs leading-none" },
+                      e('div', { className: "font-bold text-xs print:text-base" }, "DEMA S.R.L"),
+                      e('div', null, "Via Nazionale delle Puglie,9 80013 Casalnuovo (NA)"),
+                      e('div', { className: "font-bold mt-0.5" }, "P.iva : 08987341214"),
+                      e('div', { className: "mt-0.5 flex justify-between" },
+                        e('span', null, `Sede: ${currentLoc.sede}`),
+                        e('span', { className: "font-bold" }, currentLoc.citta)
+                      )
+                    ),
+                    // COLONNA DESTRA: DATI AZIENDA DESTINATARIA
+                    e('div', { className: "p-1 text-[9px] print:text-xs leading-none" },
+                      e('div', { className: "font-bold text-xs print:text-base" }, "DEMA SRL"),
+                      e('div', null, "Via Nazionale delle Puglie,9"),
+                      e('div', null, "80013 Casalnuovo (NA)"),
+                      e('div', { className: "mt-0.5 text-[8px] print:text-xs" },
+                        "Dest. Merci Via Capo Santa Maria zona P.I.P",
+                        e('br', null),
+                        "83017 Rotondi (AV)"
+                      )
+                    )
+                  )
+                ),
+
+                // GRIGLIA PRODOTTI
+                e('div', { className: "grid grid-cols-2 print:grid-cols-2 gap-0 border-2 border-t-0 border-black items-start" },
+                  // COLONNA SINISTRA (Pane e derivati freschi)
+                  e('div', { className: "print:border-r print:border-black" },
+                    e('table', { className: "w-full text-[8px] border-collapse print:text-[10pt]" },
+                      e('thead', null,
+                        e('tr', { className: "border-b border-black text-center font-bold bg-gray-50 print:bg-transparent h-[18px]" },
+                          e('th', { className: "w-[10%] border-r border-black p-0" }, "cod."),
+                          e('th', { className: "w-[60%] border-r border-black text-left p-0 pl-1" }, "Prodotti"),
+                          e('th', { className: "w-[15%] border-r border-black p-0" }, "P.ra"),
+                          e('th', { className: "w-[15%] p-0" }, "N°")
+                        )
+                      ),
+                      e('tbody', null,
+                        col1.map((p, i) => TableRow(p, true, i)),
+                        EmptyRow('empty-l', emptyRowsLeft)
+                      )
+                    )
+                  ),
+
+                  // COLONNA DESTRA (Secchi, Farine, Dolci e Prodotti personalizzati)
+                  e('div', null,
+                    e('table', { className: "w-full text-[8px] border-collapse print:text-[10pt]" },
+                      e('thead', null,
+                        e('tr', { className: "border-b border-black text-center font-bold bg-gray-50 print:bg-transparent h-[18px]" },
+                          e('th', { className: "w-[10%] border-r border-black p-0" }, "cod."),
+                          e('th', { className: "w-[60%] border-r border-black text-left p-0 pl-1" }, "Prodotti"),
+                          e('th', { className: "w-[15%] border-r border-black p-0" }, "UM"),
+                          e('th', { className: "w-[15%] p-0" }, "N° Pz.")
+                        )
+                      ),
+                      e('tbody', null,
+                        printCol2.map((p, i) => TableRow(p, false, i)),
+                        EmptyRow('empty-r', emptyRowsRight)
+                      )
+                    ),
+                    // Sezione Il conducente
+                    e('div', { className: "mt-4 border-t border-black text-center text-xs py-1 font-bold print:text-sm" },
+                      "Il conducente"
+                    )
+                  )
+                )
+              )
+            );
+          }
+
+          // --- VISTA INPUT (MOBILE) ---
+          return e('div', { className: "bg-gray-50 min-h-screen pb-24 font-sans" },
+            // App Bar
+            e('div', { className: "bg-blue-700 text-white p-4 sticky top-0 z-20 shadow-lg" },
+              e('h1', { className: "text-xl font-bold text-center" }, "Compilazione DDT"),
+              e('div', { className: "mt-3 relative" },
+                e(Search, { className: "absolute left-3 top-2.5 h-5 w-5 text-blue-200" }),
+                e('input', { 
+                  type: "text", 
+                  placeholder: "Cerca prodotto...", 
+                  className: "w-full bg-blue-800 text-white placeholder-blue-300 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400",
+                  value: searchTerm,
+                  onChange: (e) => setSearchTerm(e.target.value)
+                })
+              )
+            ),
+
+            // Lista Prodotti
+            e('div', { className: "p-4 space-y-3" },
+              filteredProducts.map(product => e('div', { key: product.id, className: `bg-white p-4 rounded-xl shadow-sm border ${getFinalQuantity(product.defaultQty) !== '' ? 'border-blue-500 ring-1 ring-blue-100' : 'border-gray-200'} flex items-center justify-between` },
+                
+                e('div', { className: "flex-1 pr-2" },
+                  e('div', { className: "flex items-center gap-2" },
+                    e('h3', { className: "font-bold text-gray-800 text-lg leading-tight" }, product.name),
+                    // Tasto Modifica (Matita)
+                    e('button', { 
+                      onClick: () => openEditModal(product), 
+                      className: "p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition",
+                      title: "Modifica nome o peso"
+                    }, e(Pencil, { size: 16 })),
+                  ),
+                  e('div', { className: "text-gray-500 text-sm mt-1" },
+                    product.weight && e('span', null, `${product.weight} `),
+                    e('span', { className: "uppercase badge bg-gray-100 px-2 py-0.5 rounded text-xs" }, product.unit)
+                  )
+                ),
+
+                e('div', { className: "flex items-center space-x-3 bg-gray-50 rounded-lg p-1" },
+                  e('button', { 
+                    onClick: () => updateQuantity(product.id, -1),
+                    className: "w-10 h-10 flex items-center justify-center bg-white border border-gray-300 rounded-lg text-gray-600 active:bg-gray-200"
+                  }, e(Minus, { size: 20 })),
+                  
+                  e('input', { 
+                    type: "number", 
+                    value: product.defaultQty, 
+                    onChange: (e) => handleManualInput(product.id, e.target.value),
+                    className: "w-12 text-center font-bold text-xl bg-transparent focus:outline-none"
+                  }),
+
+                  e('button', { 
+                    onClick: () => updateQuantity(product.id, 1),
+                    className: "w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-lg active:bg-blue-700 shadow-md"
+                  }, e(Plus, { size: 20 }))
+                )
+              )),
+              filteredProducts.length === 0 && (
+                e('div', { className: "text-center py-10 text-gray-500" },
+                  "Nessun prodotto trovato. ",
+                  e('br', null),
+                  e('button', { onClick: openAddModal, className: "text-blue-600 font-bold underline mt-2" }, "Aggiungilo ora")
+                )
+              )
+            ),
+
+            // Floating Action Buttons
+            e('div', { className: "fixed bottom-6 right-6 flex flex-col space-y-4 z-30" },
+              e('button', { 
+                onClick: openAddModal,
+                className: "w-14 h-14 bg-green-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-green-600 transition",
+                title: "Aggiungi Nuovo Prodotto"
+              }, e(FilePlus, { size: 24 })),
+              e('button', { 
+                onClick: () => setView('preview'),
+                className: "bg-blue-900 text-white px-6 py-4 rounded-full shadow-xl font-bold flex items-center space-x-2 hover:bg-blue-800 transition"
+              },
+                e('span', null, "Genera DDT"),
+                e(ArrowLeft, { className: "rotate-180", size: 20 })
+              )
+            ),
+
+            // Modal Aggiungi/Modifica Prodotto
+            showAddModal && (
+              e('div', { className: "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" },
+                e('div', { className: "bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" },
+                  e('h2', { className: "text-xl font-bold mb-4" },
+                    editingId !== null ? 'Modifica Prodotto' : 'Aggiungi Nuovo Prodotto'
+                  ),
+                  
+                  e('div', { className: "space-y-4" },
+                    e('div', null,
+                      e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Nome Prodotto"),
+                      e('input', { 
+                        type: "text", 
+                        value: newProdName,
+                        onChange: (e) => setNewProdName(e.target.value),
+                        className: "w-full border border-gray-300 rounded-lg p-2",
+                        placeholder: "Es. Taralli Finocchietto"
+                      })
+                    ),
+                    e('div', { className: "flex space-x-4" },
+                      e('div', { className: "flex-1" },
+                        e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Peso/Descr. (Opz)"),
+                        e('input', { 
+                          type: "text", 
+                          value: newProdWeight,
+                          onChange: (e) => setNewProdWeight(e.target.value),
+                          className: "w-full border border-gray-300 rounded-lg p-2",
+                          placeholder: "Es. 0,500"
+                        })
+                      ),
+                      e('div', { className: "w-1/3" },
+                        e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Unità"),
+                        e('select', { 
+                          value: newProdUnit,
+                          onChange: (e) => setNewProdUnit(e.target.value),
+                          className: "w-full border border-gray-300 rounded-lg p-2"
+                        },
+                          e('option', { value: "pz" }, "pz"),
+                          e('option', { value: "kg" }, "kg")
+                        )
+                      )
+                    )
+                  ),
+
+                  e('div', { className: "mt-6 flex space-x-3" },
+                    e('button', { 
+                      onClick: () => setShowAddModal(false),
+                      className: "flex-1 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg"
+                    }, "Annulla"),
+                    e('button', { 
+                      onClick: handleSaveProduct,
+                      disabled: !newProdName,
+                      className: "flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold disabled:opacity-50 hover:bg-blue-700"
+                    }, editingId !== null ? 'Salva Modifiche' : 'Aggiungi')
+                  )
+                )
+              )
+            )
+
+          );
         }
 
-        setShowAddModal(false);
-        setEditingId(null);
-        setNewProdName('');
-        setNewProdWeight('');
-      };
-
-      // Filtraggio per ricerca
-      const filteredProducts = products.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-      // Generazione Data Odierna
-      const today = new Date().toLocaleDateString('it-IT');
-
-      // Separazione colonne per la stampa
-      const col1 = products.filter(p => p.category === 'fresh').sort((a, b) => a.id - b.id);
-      // I prodotti 'dry' e 'custom' vanno nella colonna 2
-      const printCol2 = products.filter(p => p.category === 'dry' || p.category === 'custom').sort((a, b) => a.id - b.id);
-
-      // Calcolo delle righe vuote per la colonna di destra
-      // Totale righe necessarie per simmetria: 45
-      // L'area "Il conducente" agisce come una riga, quindi 44 righe + 1 riga footer
-      const totalPrintableRows = 45;
-      const rowsCol1 = col1.length;
-      const rowsCol2 = printCol2.length;
-      
-      const emptyRowsLeft = Math.max(0, totalPrintableRows - rowsCol1);
-      // La colonna di destra ha una riga in meno perché c'è il blocco "Il conducente" sotto la tabella
-      const emptyRowsRight = Math.max(0, totalPrintableRows - 1 - rowsCol2); 
-
-
-      const handlePrint = () => {
-        window.print();
-      };
-
-      // --- VISTA ANTEPRIMA / STAMPA ---
-      if (view === 'preview') {
-        const currentLoc = locationDetails[currentLocation];
-        return (
-          <div className="bg-gray-100 min-h-screen p-2 md:p-4 flex flex-col items-center">
-            {/* Controlli Anteprima (Nascosti in stampa) */}
-            <div className="print:hidden w-full max-w-lg md:max-w-4xl mb-4 flex flex-col space-y-3 bg-white p-4 shadow rounded-lg">
-              <div className="flex justify-between items-center">
-                <button 
-                  onClick={() => setView('input')} 
-                  className="flex items-center text-gray-700 font-semibold text-sm"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Torna alle Modifiche
-                </button>
-                <button 
-                  onClick={handlePrint}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center shadow-lg hover:bg-blue-700 transition text-sm"
-                >
-                  <Printer className="mr-2 h-4 w-4" /> Stampa / Salva PDF
-                </button>
-              </div>
-
-              {/* TOGGLE SEDE */}
-              <div className="flex items-center justify-center space-x-2 p-2 bg-gray-50 rounded-lg border">
-                <MapPin className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-semibold text-gray-700">Sede di Partenza:</span>
-                <button
-                  onClick={() => setCurrentLocation('benevento')}
-                  className={`px-3 py-1 text-xs font-bold rounded-full transition ${
-                    currentLocation === 'benevento' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600 border'
-                  }`}
-                >
-                  Benevento
-                </button>
-                <button
-                  onClick={() => setCurrentLocation('montesarchio')}
-                  className={`px-3 py-1 text-xs font-bold rounded-full transition ${
-                    currentLocation === 'montesarchio' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600 border'
-                  }`}
-                >
-                  Montesarchio
-                </button>
-              </div>
-            </div>
-
-            {/* FOGLIO A4 VIRTUALE / VISUALIZZAZIONE COMPATTA */}
-            <div className="print-area bg-white w-full max-w-4xl min-h-0 shadow-2xl p-2 md:p-4 text-black print:shadow-none print:m-0 print:p-[10mm] print:text-[10pt]">
-              
-              {/* INTESTAZIONE: TITOLO E DETTAGLI AZIENDA (COMPATTATI) */}
-              <div className="border-2 border-black mb-1">
-                {/* Titolo DDT: ridotto padding e font */}
-                <div className="text-center font-bold text-xs print:text-lg border-b border-black py-0.5 px-1 bg-gray-100 print:bg-transparent">
-                  DDT DI RESO N. _________ del {today}
-                </div>
-                {/* Intestazione Azienda: Font e padding ridotti */}
-                <div className="grid grid-cols-2 print:grid-cols-2">
-                  {/* COLONNA SINISTRA: DATI AZIENDA MITTENTE */}
-                  <div className="p-1 border-r border-black text-[9px] print:text-xs leading-none">
-                    <div className="font-bold text-xs print:text-base">DEMA S.R.L</div>
-                    <div>Via Nazionale delle Puglie,9 80013 Casalnuovo (NA)</div>
-                    <div className="font-bold mt-0.5">P.iva : 08987341214</div>
-                    <div className="mt-0.5 flex justify-between">
-                      <span>Sede: {currentLoc.sede}</span>
-                      <span className="font-bold">{currentLoc.citta}</span>
-                    </div>
-                  </div>
-                  {/* COLONNA DESTRA: DATI AZIENDA DESTINATARIA */}
-                  <div className="p-1 text-[9px] print:text-xs leading-none">
-                    <div className="font-bold text-xs print:text-base">DEMA SRL</div>
-                    <div>Via Nazionale delle Puglie,9</div>
-                    <div>80013 Casalnuovo (NA)</div>
-                    <div className="mt-0.5 text-[8px] print:text-xs">
-                      Dest. Merci Via Capo Santa Maria zona P.I.P
-                      <br/>83017 Rotondi (AV)
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* GRIGLIA PRODOTTI: FORCE 2 COLONNE SIMMETRICHE (grid-cols-2) */}
-              <div className="grid grid-cols-2 print:grid-cols-2 gap-0 border-2 border-t-0 border-black items-start">
-                {/* COLONNA SINISTRA (Pane e derivati freschi) */}
-                <div className="print:border-r print:border-black">
-                  {/* Table Font Size: text-[8px] per massima compressione su mobile */}
-                  <table className="w-full text-[8px] border-collapse print:text-[10pt]">
-                    <thead>
-                      {/* Altezza forzata e padding rimosso per simmetria */}
-                      <tr className="border-b border-black text-center font-bold bg-gray-50 print:bg-transparent h-[18px]">
-                        {/* Widths: 10% (Cod) + 60% (Prodotti) + 15% (P.ra) + 15% (N°) */}
-                        <th className="w-[10%] border-r border-black p-0">cod.</th>
-                        <th className="w-[60%] border-r border-black text-left p-0 pl-1">Prodotti</th>
-                        <th className="w-[15%] border-r border-black p-0">P.ra</th>
-                        <th className="w-[15%] p-0">N°</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {col1.map((p) => (
-                        <tr key={p.id} className="border-b border-gray-300 h-[18px]">
-                          <td className="border-r border-black text-center text-gray-400">{p.id}</td>
-                          <td className="border-r border-black pl-1 truncate font-medium">{p.name}</td>
-                          <td className="border-r border-black text-center">{p.weight}</td>
-                          <td className="text-center font-bold text-black text-xs">
-                            {getFinalQuantity(p.defaultQty)}
-                          </td>
-                        </tr>
-                      ))}
-                      {/* Righe vuote per riempire lo spazio su A4 (Totale 45 righe) */}
-                      {[...Array(emptyRowsLeft)].map((_, i) => (
-                         <tr key={`empty-l-${i}`} className="border-b border-gray-300 h-[18px]">
-                           <td className="border-r border-black"></td><td className="border-r border-black"></td><td className="border-r border-black"></td><td></td>
-                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* COLONNA DESTRA (Secchi, Farine, Dolci e Prodotti personalizzati) */}
-                <div>
-                  {/* Table Font Size: text-[8px] per massima compressione su mobile */}
-                  <table className="w-full text-[8px] border-collapse print:text-[10pt]">
-                    <thead>
-                      {/* Altezza forzata e padding rimosso per simmetria */}
-                      <tr className="border-b border-black text-center font-bold bg-gray-50 print:bg-transparent h-[18px]">
-                        {/* Widths: 10% (Cod) + 60% (Prodotti) + 15% (UM) + 15% (N° Pz) */}
-                        <th className="w-[10%] border-r border-black p-0">cod.</th>
-                        <th className="w-[60%] border-r border-black text-left p-0 pl-1">Prodotti</th>
-                        <th className="w-[15%] border-r border-black p-0">UM</th>
-                        <th className="w-[15%] p-0">N° Pz.</th> 
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {printCol2.map((p) => (
-                        <tr key={p.id} className="border-b border-gray-300 h-[18px]">
-                          <td className="border-r border-black text-center text-gray-400">{p.id}</td>
-                          <td className="border-r border-black pl-1 truncate font-medium">{p.name}</td>
-                          <td className="border-r border-black text-center">{p.unit}</td>
-                          <td className="text-center font-bold text-black text-xs">
-                            {getFinalQuantity(p.defaultQty)}
-                          </td>
-                        </tr>
-                      ))}
-                       {/* Righe vuote per riempire lo spazio su A4 (Totale 44 righe per compensare il footer) */}
-                       {[...Array(emptyRowsRight)].map((_, i) => (
-                         <tr key={`empty-r-${i}`} className="border-b border-gray-300 h-[18px]">
-                           <td className="border-r border-black"></td><td className="border-r border-black"></td><td className="border-r border-black"></td><td></td>
-                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {/* Sezione Il conducente (che bilancia la riga tolta dalla tabella) */}
-                  <div className="mt-4 border-t border-black text-center text-xs py-1 font-bold print:text-sm">
-                    Il conducente
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // --- VISTA INPUT (MOBILE) ---
-      return (
-        <div className="bg-gray-50 min-h-screen pb-24 font-sans">
-          {/* App Bar */}
-          <div className="bg-blue-700 text-white p-4 sticky top-0 z-20 shadow-lg">
-            <h1 className="text-xl font-bold text-center">Compilazione DDT</h1>
-            <div className="mt-3 relative">
-              <Search className="absolute left-3 top-2.5 h-5 w-5 text-blue-200" />
-              <input 
-                type="text" 
-                placeholder="Cerca prodotto..." 
-                className="w-full bg-blue-800 text-white placeholder-blue-300 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Lista Prodotti */}
-          <div className="p-4 space-y-3">
-            {filteredProducts.map(product => (
-              <div key={product.id} className={`bg-white p-4 rounded-xl shadow-sm border ${getFinalQuantity(product.defaultQty) !== '' ? 'border-blue-500 ring-1 ring-blue-100' : 'border-gray-200'} flex items-center justify-between`}>
-                
-                <div className="flex-1 pr-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-gray-800 text-lg leading-tight">{product.name}</h3>
-                    {/* Tasto Modifica (Matita) */}
-                    <button 
-                      onClick={() => openEditModal(product)} 
-                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition"
-                      title="Modifica nome o peso"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                  </div>
-                  <div className="text-gray-500 text-sm mt-1">
-                    {product.weight && <span>{product.weight} </span>}
-                    <span className="uppercase badge bg-gray-100 px-2 py-0.5 rounded text-xs">{product.unit}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3 bg-gray-50 rounded-lg p-1">
-                  <button 
-                    onClick={() => updateQuantity(product.id, -1)}
-                    className="w-10 h-10 flex items-center justify-center bg-white border border-gray-300 rounded-lg text-gray-600 active:bg-gray-200"
-                  >
-                    <Minus size={20} />
-                  </button>
-                  
-                  <input 
-                    type="number" 
-                    value={product.defaultQty} 
-                    onChange={(e) => handleManualInput(product.id, e.target.value)}
-                    className="w-12 text-center font-bold text-xl bg-transparent focus:outline-none"
-                  />
-
-                  <button 
-                    onClick={() => updateQuantity(product.id, 1)}
-                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-lg active:bg-blue-700 shadow-md"
-                  >
-                    <Plus size={20} />
-                  </button>
-                </div>
-
-              </div>
-            ))}
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-10 text-gray-500">
-                Nessun prodotto trovato. <br/>
-                <button onClick={openAddModal} className="text-blue-600 font-bold underline mt-2">Aggiungilo ora</button>
-              </div>
-            )}
-          </div>
-
-          {/* Floating Action Buttons */}
-          <div className="fixed bottom-6 right-6 flex flex-col space-y-4 z-30">
-            <button 
-              onClick={openAddModal}
-              className="w-14 h-14 bg-green-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-green-600 transition"
-              title="Aggiungi Nuovo Prodotto"
-            >
-              <FilePlus size={24} />
-            </button>
-            <button 
-              onClick={() => setView('preview')}
-              className="bg-blue-900 text-white px-6 py-4 rounded-full shadow-xl font-bold flex items-center space-x-2 hover:bg-blue-800 transition"
-            >
-              <span>Genera DDT</span>
-              <ArrowLeft className="rotate-180" size={20} />
-            </button>
-          </div>
-
-          {/* Modal Aggiungi/Modifica Prodotto */}
-          {showAddModal && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                <h2 className="text-xl font-bold mb-4">
-                  {editingId !== null ? 'Modifica Prodotto' : 'Aggiungi Nuovo Prodotto'}
-                </h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome Prodotto</label>
-                    <input 
-                      type="text" 
-                      value={newProdName}
-                      onChange={(e) => setNewProdName(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      placeholder="Es. Taralli Finocchietto"
-                    />
-                  </div>
-                  <div className="flex space-x-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Peso/Descr. (Opz)</label>
-                      <input 
-                        type="text" 
-                        value={newProdWeight}
-                        onChange={(e) => setNewProdWeight(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg p-2"
-                        placeholder="Es. 0,500"
-                      />
-                    </div>
-                    <div className="w-1/3">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Unità</label>
-                      <select 
-                        value={newProdUnit}
-                        onChange={(e) => setNewProdUnit(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg p-2"
-                      >
-                        <option value="pz">pz</option>
-                        <option value="kg">kg</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex space-x-3">
-                  <button 
-                    onClick={() => setShowAddModal(false)}
-                    className="flex-1 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg"
-                  >
-                    Annulla
-                  </button>
-                  <button 
-                    onClick={handleSaveProduct}
-                    disabled={!newProdName}
-                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold disabled:opacity-50 hover:bg-blue-700"
-                  >
-                    {editingId !== null ? 'Salva Modifiche' : 'Aggiungi'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-        </div>
-      );
-    }
-
-    // Inizializzazione dell'applicazione React
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-</script>
-
-
+        // Inizializzazione dell'applicazione React
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(e(App, null));
+    </script>
 </body>
 </html>
