@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DDT Reso DEMA - Autosufficiente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Stili specifici per la stampa (A4) */
+        @page {
+            size: A4;
+            margin: 0;
+        }
+        @media print {
+            body { margin: 0; }
+            /* Forza le dimensioni A4 per l'elemento di stampa */
+            .print-area {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 !important;
+                padding: 10mm !important; /* Margini interni di 1cm */
+                box-shadow: none !important;
+            }
+            .print-area * { color: black !important; }
+            .print\:hidden { display: none !important; }
+            /* Dimensioni font ottimizzate per A4 */
+            .print\:text-\[10pt\] * { font-size: 10pt !important; }
+            .print\:text-lg { font-size: 14pt !important; }
+            .print\:text-base { font-size: 12pt !important; }
+            .print\:text-xs { font-size: 9pt !important; }
+            .print\:border-r { border-right-width: 1px !important; }
+            .print\:bg-transparent { background-color: transparent !important; }
+            /* Altezza riga ridotta per A4 */
+            .print-row-h { height: 16px; }
+        }
+        /* Nasconde le frecce per gli input di tipo number (solo per l'input di quantità) */
+        input[type='number']::-webkit-inner-spin-button, 
+        input[type='number']::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <script>
+        // Alias per React.createElement per rendere il codice più compatto
+        const e = React.createElement;
+        const { useState, useEffect, useCallback } = React;
+        
+        // =================================================================
+        // CONFIGURAZIONE PRODOTTI (INCORPORATA - LISTA AGGIORNATA CON LE TUE CATEGORIE)
+        // =================================================================
+        const PRODUCT_CONFIG_DATA = `
+        [PANE]
+        Impasto
+        Pagnotta 2,000
+        Pagnotta 1,000
+        Filone 1,000
+        Filone casareccio 0,700
+        Pagnotella 0,500
+        Sfilatino 0,500
+        Pagnotella integrale 0,500
+        Sfilatino integrale 0,500
+        Ciambella 1,000
+        Pizza col buco 0,400
+        Fruste 0,400
+        Baguette 0,300
+        Ciabattine lunghe 0,150
+        Ciabattine tonde 0,150
+        Francesino 0,150
+        Zoccoletto 0,120
+        Mignon 0,080
+        Mignon integrale 0,080
+        Pane senza sale 0,150
+        Pane di saraolla 0,500
+        Pane di saraolla Kg1 1,000
+        Pane rosso 0,500
+        Zzora 0,600
+        Pane di Segale 0,500
+        Pane Proteico
+        Tortani con cicole
+
+        [VETRINA]
+        Margherita
+        Marinara
+        Scarola
+        Broccoli/salsicce
+        Focaccia bianca
+        Parigina
+        Cornetti Vari Gusti
+        Ciambelle
+        Rusticini mignon
+        Rustici Grandi
+        Pizzette Mignon
+        focaccia pomodorini
+        focaccia pomodorini crud
+        calzone pomodoro
+        calzone prosciutto
+        pizza wurstel e patatine
+        pizza pomodorini e mozzarella
+        focaccia senza pomodori
+
+        [SCAFFALI]
+        La Biscotta Bian/Int
+        La Fresella Bian/Int
+        Fresella tonda Bian/Int
+        Crostini/Crostini s.sale
+        Tarallini monoporzione
+        Treccine/B. pizza
+        Taralli tipo margellina
+        Pan grattato (Pz)
+        Mollica per ripieni
+        Farina tipo "00"
+        Farina grano duro
+        Farina integrale
+        Farina di mais
+        Biscottini alle mandorle
+        Biscottini vari gusti
+        Pastarelle
+        Uova
+
+        [ALTRO]
+        Pan di spagna
+        Ancinetti/prussianine
+        Migliacci/Pastiere
+        Scaldati/Cresciuti
+        Casatiello/Pizza chiena
+        `;
+
+
+        // =================================================================
+        // DEFINIZIONI SVG INLINE PER STABILITÀ 
+        // =================================================================
+
+        const Icon = (svg, props) => e('svg', { 
+            xmlns: "http://www.w3.org/2000/svg",
+            width: props.size || 24,
+            height: props.size || 24,
+            viewBox: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: 2,
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            ...props 
+        }, e('g', { dangerouslySetInnerHTML: { __html: svg } }));
+
+        const Plus = (props) => Icon(`<line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />`, props);
+        const Minus = (props) => Icon(`<line x1="5" y1="12" x2="19" y2="12" />`, props);
+        const Printer = (props) => Icon(`<polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" rx="2" />`, props);
+        const Search = (props) => Icon(`<circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />`, props);
+        const FilePlus = (props) => Icon(`<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" />`, props);
+        const ArrowLeft = (props) => Icon(`<line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />`, props);
+        const MapPin = (props) => Icon(`<path d="M12 21.75l-4-4.5c-3.3-3.7-3.3-9.1 0-12.8 3.7-3.3 9.1-3.3 12.8 0 3.3 3.7 3.3 9.1 0 12.8l-4 4.5z" /><circle cx="12" cy="10" r="3" />`, props);
+        const ChevronDown = (props) => Icon(`<polyline points="6 9 12 15 18 9" />`, props);
+
+
+        // =================================================================
+        // FUNZIONI DI GESTIONE DATI LOCALI E CONFIGURAZIONE
+        // =================================================================
+        
+        // Funzione per PARSARE i prodotti dalla stringa di configurazione interna
+        const parseConfigProducts = () => {
+            try {
+                const lines = PRODUCT_CONFIG_DATA.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+                let currentCategory = null;
+                // Assegnazione degli ID sequenziali per le nuove categorie definite dall'utente
+                let paneId = 1; 
+                let vetrinaId = 50; 
+                let scaffaliId = 100;
+                let altroId = 150;
+                const products = [];
+
+                for (const line of lines) {
+                    // Imposta la categoria corrente
+                    if (line.startsWith('[PANE]')) {
+                        currentCategory = 'PANE';
+                        continue;
+                    } else if (line.startsWith('[VETRINA]')) {
+                        currentCategory = 'VETRINA';
+                        continue;
+                    } else if (line.startsWith('[SCAFFALI]')) {
+                        currentCategory = 'SCAFFALI';
+                        continue;
+                    } else if (line.startsWith('[ALTRO]')) {
+                        currentCategory = 'ALTRO';
+                        continue;
+                    }
+                    
+                    if (currentCategory && line) {
+                        
+                        let id, unit, weight, name;
+                        
+                        // Logica di PARSING per categorie PANE e VETRINA (fresh/display)
+                        if (currentCategory === 'PANE' || currentCategory === 'VETRINA') {
+                            id = currentCategory === 'PANE' ? paneId++ : vetrinaId++;
+                            unit = 'pz';
+                            
+                            // Tenta di estrarre il peso in formato 'x,xxx' se presente alla fine della riga
+                            const match = line.match(/^(.*)\s(\d+,\d{3})$/);
+                            if (match) {
+                                name = match[1].trim();
+                                weight = match[2];
+                            } else {
+                                weight = '';
+                                name = line;
+                            }
+                        
+                        // Logica di PARSING per categorie SCAFFALI e ALTRO (dry/miscellaneous)
+                        } else if (currentCategory === 'SCAFFALI' || currentCategory === 'ALTRO') {
+                            id = currentCategory === 'SCAFFALI' ? scaffaliId++ : altroId++;
+                            weight = '';
+                            unit = 'kg'; // Default
+                            name = line;
+
+                            // Verifica se l'unità è specificata tra parentesi (es. Pan grattato (Pz))
+                            if (line.includes('(Pz)')) {
+                                unit = 'pz';
+                                name = line.replace('(Pz)', '').trim();
+                            } else if (line.includes('(Kg)')) {
+                                // Mantiene kg ma rimuove la notazione
+                                name = line.replace('(Kg)', '').trim();
+                            }
+                        } else {
+                            // Ignora linee non pertinenti o categorie non mappate
+                            continue;
+                        }
+
+                        products.push({
+                            id,
+                            name,
+                            weight,
+                            unit,
+                            category: currentCategory.toLowerCase(), // Memorizza in minuscolo per uso interno
+                            defaultQty: 0
+                        });
+                    }
+                }
+                
+                console.log(`Prodotti caricati e generati dalla configurazione interna. Trovati ${products.length} prodotti.`);
+                return products.sort((a, b) => a.id - b.id);
+                
+            } catch (error) {
+                console.error("Errore nel parsing della lista di prodotti interna:", error);
+                // Ritorna una lista vuota in caso di errore grave
+                return []; 
+            }
+        };
+
+        const getLocalQuantities = () => {
+            try {
+                const savedQuantities = localStorage.getItem('ddt_quantities');
+                return savedQuantities ? JSON.parse(savedQuantities) : {};
+            } catch (error) {
+                console.error("Errore nel caricamento delle quantità locali:", error);
+                return {};
+            }
+        };
+
+        const saveLocalQuantities = (products) => {
+            try {
+                const quantitiesToSave = products
+                    .filter(p => p.defaultQty !== '' && p.defaultQty !== 0)
+                    .reduce((acc, p) => {
+                        acc[p.id] = p.defaultQty;
+                        return acc;
+                    }, {});
+                localStorage.setItem('ddt_quantities', JSON.stringify(quantitiesToSave));
+                return true;
+            } catch (error) {
+                console.error("Errore nel salvataggio delle quantità in localStorage:", error);
+                return false;
+            }
+        };
+
+
+        // =================================================================
+        // COMPONENTE PRINCIPALE DELL'APPLICAZIONE
+        // =================================================================
+
+        function App() {
+          const [products, setProducts] = useState([]);
+          const [isLoading, setIsLoading] = useState(true);
+          const [view, setView] = useState('input'); // 'input', 'preview'
+          const [searchTerm, setSearchTerm] = useState('');
+          const [currentLocation, setCurrentLocation] = useState(localStorage.getItem('ddt_location') || 'benevento');
+          
+          const [showAddModal, setShowAddModal] = useState(false);
+          
+          const [newProdName, setNewProdName] = useState('');
+          const [newProdWeight, setNewProdWeight] = useState('');
+          const [newProdUnit, setNewProdUnit] = useState('pz');
+          
+          const [collapsedCategories, setCollapsedCategories] = useState({ pane: false, vetrina: false, scaffali: false, altro: false, custom: false }); 
+
+          // 1. Caricamento Iniziale della configurazione interna e delle quantità da localStorage
+          useEffect(() => {
+              const initializeProducts = () => {
+                  const configProducts = parseConfigProducts();
+                  const localQuantities = getLocalQuantities();
+                  
+                  // Applica le quantità salvate localmente alla lista prodotti configurata
+                  const initialProducts = configProducts.map(p => ({
+                      ...p,
+                      // Cerca la quantità salvata per l'ID del prodotto corrente
+                      defaultQty: localQuantities[p.id] !== undefined ? localQuantities[p.id] : p.defaultQty
+                  }));
+                  
+                  setProducts(initialProducts);
+                  setIsLoading(false);
+              };
+              initializeProducts();
+          }, []);
+
+
+          // 2. Salvataggio in localStorage (solo delle quantità e della location)
+          useEffect(() => {
+              if (products.length > 0) {
+                  saveLocalQuantities(products);
+              }
+              localStorage.setItem('ddt_location', currentLocation);
+          }, [products, currentLocation]);
+
+          // Ottiene l'ID custom più alto per assegnare il prossimo
+          // Usiamo un range ID > 1000 per i prodotti aggiunti a mano
+          const nextCustomId = products.reduce((max, p) => p.id >= 1000 ? Math.max(max, p.id) : 1000, 1000) + 1;
+
+          const locationDetails = {
+            benevento: { sede: 'Via Napoli', citta: 'Benevento' },
+            montesarchio: { sede: 'Via Giovanni Amendola', citta: 'Montesarchio (BN)' }
+          };
+
+          const updateQuantity = useCallback((id, delta) => {
+            setProducts(prev => prev.map(p => {
+              if (p.id === id) {
+                const currentQty = parseInt(p.defaultQty) || 0;
+                const newQty = Math.max(0, currentQty + delta);
+                return { ...p, defaultQty: newQty === 0 ? '' : newQty };
+              }
+              return p;
+            }));
+          }, []);
+
+          const handleManualInput = useCallback((id, value) => {
+            // Permette stringa vuota ('') o un numero
+            const qty = value === '' ? '' : (parseInt(value) || 0); 
+            setProducts(prev => prev.map(p => p.id === id ? { ...p, defaultQty: qty } : p));
+          }, []);
+          
+          const getFinalQuantity = (qty) => {
+              return qty === '' || qty === 0 ? '' : qty;
+          }
+
+          const openAddModal = () => {
+            setNewProdName('');
+            setNewProdWeight('');
+            setNewProdUnit('pz');
+            setShowAddModal(true);
+          };
+
+
+          const handleSaveProduct = () => {
+            // Questa funzione permette SOLO l'aggiunta di prodotti CUSTOM (ID > 1000)
+            if (!newProdName) return;
+
+            const newProduct = {
+                id: nextCustomId, 
+                name: newProdName,
+                weight: newProdWeight,
+                unit: newProdUnit,
+                category: 'custom', // I prodotti aggiunti qui sono sempre Custom (ALTRO/Personalizzato)
+                defaultQty: 1
+            };
+            setProducts(prev => [...prev, newProduct].sort((a, b) => a.id - b.id));
+
+            setShowAddModal(false);
+            setNewProdName('');
+            setNewProdWeight('');
+          };
+
+          // Filtro e raggruppamento per la vista 'input'
+          const filteredProducts = products.filter(p => 
+            p.name.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+          
+          // Raggruppa i prodotti solo se la ricerca non è attiva
+          const productsToDisplay = searchTerm === '' ? products : filteredProducts;
+          
+          const groupedProducts = productsToDisplay.reduce((acc, p) => {
+            const category = p.category || 'pane';
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+            acc[category].push(p);
+            return acc;
+          }, {});
+          
+          // Ordine delle categorie definite dall'utente + la custom
+          const categoriesOrder = ['pane', 'vetrina', 'scaffali', 'altro', 'custom'];
+
+          const getCategoryTitle = (category) => {
+            switch (category) {
+                case 'pane': return 'PANE';
+                case 'vetrina': return 'VETRINA';
+                case 'scaffali': return 'SCAFFALI';
+                case 'altro': return 'ALTRO';
+                case 'custom': return 'Prodotti Personalizzati';
+                default: return 'Altro';
+            }
+          };
+
+          const toggleCollapse = (category) => {
+            setCollapsedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+          };
+          
+          const today = new Date().toLocaleDateString('it-IT');
+
+          // -----------------------------------------------------------------
+          // LOGICA AGGIORNATA PER LA STAMPA (INCLUSIONE DEI PRODOTTI ZERO-QUANTITY)
+          // -----------------------------------------------------------------
+          // Colonna 1: PANE (Articoli freschi principali)
+          const allPane = products.filter(p => p.category === 'pane').sort((a, b) => a.id - b.id);
+          // Colonna 2: VETRINA, SCAFFALI, ALTRO, CUSTOM (Tutti gli altri)
+          const allOthers = products.filter(p => p.category !== 'pane').sort((a, b) => a.id - b.id);
+
+          // NON FILTRA PIÙ: Colonna 1 contiene TUTTI i prodotti PANE
+          const col1 = allPane; 
+          // NON FILTRA PIÙ: Colonna 2 contiene TUTTI gli altri prodotti
+          const printCol2 = allOthers;
+
+          const totalPrintableRows = 45;
+          const rowsCol1 = col1.length;
+          const rowsCol2 = printCol2.length;
+          
+          const emptyRowsLeft = Math.max(0, totalPrintableRows - rowsCol1);
+          // La colonna di destra ha una riga in meno (per "Il conducente")
+          const emptyRowsRight = Math.max(0, totalPrintableRows - 1 - rowsCol2); 
+          // -----------------------------------------------------------------
+
+          const handlePrint = () => {
+            window.print();
+          };
+
+          if (isLoading) {
+              return e('div', { className: "flex items-center justify-center min-h-screen text-lg font-semibold text-blue-600" }, "Caricamento lista prodotti...");
+          }
+
+          // =================================================================
+          // VISTA ANTEPRIMA / STAMPA
+          // =================================================================
+          if (view === 'preview') {
+            const currentLoc = locationDetails[currentLocation];
+            
+            // Helper per la riga della tabella
+            const TableRow = (p, isCol1, index) => e('tr', { key: p.id || `empty-${index}`, className: "border-b border-gray-300 print-row-h" },
+                e('td', { className: "border-r border-black text-center text-gray-400" }, p.id || ''),
+                e('td', { className: "border-r border-black pl-1 truncate font-medium" }, p.name || ''),
+                e('td', { className: "border-r border-black text-center" }, isCol1 ? (p.weight || '') : (p.unit || '')),
+                e('td', { className: "text-center font-bold text-black text-xs" }, getFinalQuantity(p.defaultQty)),
+            );
+
+            // Righe vuote
+            const EmptyRow = (keyPrefix, count) => Array(count).fill(null).map((_, i) => e('tr', { key: `${keyPrefix}-${i}`, className: "border-b border-gray-300 print-row-h" },
+                e('td', { className: "border-r border-black" }), 
+                e('td', { className: "border-r border-black" }), 
+                e('td', { className: "border-r border-black" }), 
+                e('td', null)
+            ));
+
+
+            return e('div', { className: "bg-gray-100 min-h-screen p-2 md:p-4 flex flex-col items-center" },
+              // Controlli Anteprima (Nascosti in stampa)
+              e('div', { className: "print:hidden w-full max-w-lg md:max-w-4xl mb-4 flex flex-col space-y-3 bg-white p-4 shadow rounded-lg" },
+                e('div', { className: "flex justify-between items-center" },
+                  e('button', { 
+                    onClick: () => setView('input'), 
+                    className: "flex items-center text-gray-700 font-semibold text-sm"
+                  },
+                    e(ArrowLeft, { className: "mr-2 h-4 w-4" }), "Torna alle Modifiche"
+                  ),
+                  e('button', { 
+                    onClick: handlePrint,
+                    className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center shadow-lg hover:bg-blue-700 transition text-sm"
+                  },
+                    e(Printer, { className: "mr-2 h-4 w-4" }), "Stampa / Salva PDF"
+                  )
+                ),
+                // TOGGLE SEDE
+                e('div', { className: "flex items-center justify-center space-x-2 p-2 bg-gray-50 rounded-lg border" },
+                  e(MapPin, { className: "h-4 w-4 text-gray-500" }),
+                  e('span', { className: "text-sm font-semibold text-gray-700" }, "Sede di Partenza:"),
+                  e('button', {
+                    onClick: () => setCurrentLocation('benevento'),
+                    className: `px-3 py-1 text-xs font-bold rounded-full transition ${currentLocation === 'benevento' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600 border'}`
+                  }, "Benevento"),
+                  e('button', {
+                    onClick: () => setCurrentLocation('montesarchio'),
+                    className: `px-3 py-1 text-xs font-bold rounded-full transition ${currentLocation === 'montesarchio' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600 border'}`
+                  }, "Montesarchio")
+                )
+              ),
+              
+              // FOGLIO A4 VIRTUALE
+              e('div', { className: "print-area bg-white w-full max-w-4xl min-h-0 shadow-2xl p-2 md:p-4 text-black print:shadow-none print:m-0 print:p-[10mm] print:text-[10pt]" },
+                // INTESTAZIONE: TITOLO E DETTAGLI AZIENDA
+                e('div', { className: "border-2 border-black mb-1" },
+                  // Titolo DDT
+                  e('div', { className: "text-center font-bold text-xs print:text-base border-b border-black py-0.5 px-1 bg-gray-100 print:bg-transparent" },
+                    `DDT DI RESO N. _________ del ${today}`
+                  ),
+                  // Intestazione Azienda
+                  e('div', { className: "grid grid-cols-2 print:grid-cols-2" },
+                    // COLONNA SINISTRA: DATI AZIENDA MITTENTE
+                    e('div', { className: "p-1 border-r border-black text-[9px] print:text-xs leading-none" },
+                      e('div', { className: "font-bold text-xs print:text-base" }, "DEMA S.R.L"),
+                      e('div', null, "Via Nazionale delle Puglie,9 80013 Casalnuovo (NA)"),
+                      e('div', { className: "font-bold mt-0.5" }, "P.iva : 08987341214"),
+                      e('div', { className: "mt-0.5 flex justify-between" },
+                        e('span', null, `Sede: ${currentLoc.sede}`),
+                        e('span', { className: "font-bold" }, currentLoc.citta)
+                      )
+                    ),
+                    // COLONNA DESTRA: DATI AZIENDA DESTINATARIA
+                    e('div', { className: "p-1 text-[9px] print:text-xs leading-none" },
+                      e('div', { className: "font-bold text-xs print:text-base" }, "DEMA SRL"),
+                      e('div', null, "Via Nazionale delle Puglie,9"),
+                      e('div', null, "80013 Casalnuovo (NA)"),
+                      e('div', { className: "mt-0.5 text-[8px] print:text-xs" },
+                        "Dest. Merci Via Capo Santa Maria zona P.I.P",
+                        e('br', null),
+                        "83017 Rotondi (AV)"
+                      )
+                    )
+                  )
+                ),
+
+                // GRIGLIA PRODOTTI
+                e('div', { className: "grid grid-cols-2 print:grid-cols-2 gap-0 border-2 border-t-0 border-black items-start" },
+                  // COLONNA SINISTRA (PANE)
+                  e('div', { className: "print:border-r print:border-black" },
+                    e('table', { className: "w-full text-[8px] border-collapse print:text-[10pt]" },
+                      e('thead', null,
+                        e('tr', { className: "border-b border-black text-center font-bold bg-gray-50 print:bg-transparent h-[18px]" },
+                          e('th', { className: "w-[10%] border-r border-black p-0" }, "cod."),
+                          e('th', { className: "w-[60%] border-r border-black text-left p-0 pl-1" }, "Prodotti"),
+                          e('th', { className: "w-[15%] border-r border-black p-0" }, "P.ra"),
+                          e('th', { className: "w-[15%] p-0" }, "N°")
+                        )
+                      ),
+                      e('tbody', null,
+                        col1.map((p, i) => TableRow(p, true, i)),
+                        EmptyRow('empty-l', emptyRowsLeft)
+                      )
+                    )
+                  ),
+
+                  // COLONNA DESTRA (VETRINA, SCAFFALI, ALTRO, CUSTOM)
+                  e('div', null,
+                    e('table', { className: "w-full text-[8px] border-collapse print:text-[10pt]" },
+                      e('thead', null,
+                        e('tr', { className: "border-b border-black text-center font-bold bg-gray-50 print:bg-transparent h-[18px]" },
+                          e('th', { className: "w-[10%] border-r border-black p-0" }, "cod."),
+                          e('th', { className: "w-[60%] border-r border-black text-left p-0 pl-1" }, "Prodotti"),
+                          e('th', { className: "w-[15%] border-r border-black p-0" }, "UM"),
+                          e('th', { className: "w-[15%] p-0" }, "N° Pz.")
+                        )
+                      ),
+                      e('tbody', null,
+                        printCol2.map((p, i) => TableRow(p, false, i)),
+                        EmptyRow('empty-r', emptyRowsRight)
+                      )
+                    ),
+                    // Sezione Il conducente
+                    e('div', { className: "mt-4 border-t border-black text-center text-xs py-1 font-bold print:text-sm" },
+                      "Il conducente"
+                    )
+                  )
+                )
+              )
+            );
+          }
+
+          // =================================================================
+          // VISTA INPUT (DEFAULT)
+          // =================================================================
+          return e('div', { className: "bg-gray-50 min-h-screen pb-24 font-sans" },
+            // App Bar
+            e('div', { className: "bg-blue-700 text-white p-4 sticky top-0 z-20 shadow-lg" },
+              e('h1', { className: "text-xl font-bold text-center" }, "Compilazione DDT"),
+              e('div', { className: "mt-3 relative" },
+                e(Search, { className: "absolute left-3 top-2.5 h-5 w-5 text-blue-200" }),
+                e('input', { 
+                  type: "text", 
+                  placeholder: "Cerca prodotto...", 
+                  className: "w-full bg-blue-800 text-white placeholder-blue-300 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400",
+                  value: searchTerm,
+                  onChange: (e) => setSearchTerm(e.target.value)
+                })
+              )
+            ),
+
+            // Lista Prodotti raggruppati per categoria
+            e('div', { className: "p-4 space-y-5" },
+              categoriesOrder.map(category => {
+                const productsInCategory = groupedProducts[category] || [];
+                const isCollapsed = collapsedCategories[category];
+                
+                // Mostra la categoria solo se ci sono prodotti O se non è attiva la ricerca
+                if (productsInCategory.length === 0 && searchTerm !== '' && category !== 'custom') return null; 
+                
+                // Se la ricerca è attiva, mostra solo i risultati filtrati in un unico blocco
+                if (searchTerm !== '') {
+                    if (category !== categoriesOrder[0]) return null; 
+
+                    const allFiltered = filteredProducts.map(product => renderProductItem(product, updateQuantity, handleManualInput));
+
+                    return e('div', { key: 'search-results', className: "bg-white rounded-xl shadow-lg overflow-hidden" },
+                        e('div', { className: "w-full flex justify-between items-center p-4 bg-gray-200" },
+                            e('h2', { className: "text-lg font-bold text-gray-800" }, `Risultati Ricerca (${filteredProducts.length})`)
+                        ),
+                        e('div', { className: "p-3 space-y-3" }, allFiltered)
+                    );
+                }
+
+
+                // Vista raggruppata per categoria
+                return e('div', { key: category, className: "bg-white rounded-xl shadow-lg overflow-hidden" },
+                  // Header Categoria
+                  e('button', {
+                    onClick: () => toggleCollapse(category),
+                    className: "w-full flex justify-between items-center p-4 bg-blue-100 hover:bg-blue-200 transition"
+                  },
+                    e('h2', { className: "text-lg font-bold text-blue-800" }, getCategoryTitle(category)),
+                    e(ChevronDown, { 
+                      size: 24, 
+                      className: `text-blue-600 transition-transform duration-300 ${isCollapsed ? '' : 'rotate-180'}` 
+                    })
+                  ),
+
+                  // Lista Prodotti
+                  !isCollapsed && e('div', { className: "p-3 space-y-3" },
+                    productsInCategory.map(product => renderProductItem(product, updateQuantity, handleManualInput))
+                  )
+                )
+              }),
+
+              // Messaggio se non ci sono prodotti (dopo il filtro)
+              (searchTerm !== '' && filteredProducts.length === 0) && (
+                e('div', { className: "text-center py-10 text-gray-500" },
+                  "Nessun prodotto trovato. Prova una ricerca diversa o ",
+                  e('button', { onClick: openAddModal, className: "text-blue-600 font-bold underline mt-2" }, "aggiungine uno nuovo (personalizzato)")
+                )
+              )
+            ),
+
+            // Floating Action Buttons
+            e('div', { className: "fixed bottom-6 right-6 flex flex-col space-y-4 z-30" },
+              
+              e('button', { 
+                onClick: openAddModal,
+                className: "w-14 h-14 bg-green-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-green-600 transition",
+                title: "Aggiungi Nuovo Prodotto Personalizzato"
+              }, e(FilePlus, { size: 24 })),
+              
+              e('button', { 
+                onClick: () => setView('preview'),
+                className: "bg-blue-900 text-white px-6 py-4 rounded-full shadow-xl font-bold flex items-center space-x-2 hover:bg-blue-800 transition"
+              },
+                e('span', null, "Genera DDT"),
+                e(ArrowLeft, { className: "rotate-180", size: 20 })
+              )
+            ),
+
+            // Modal Aggiungi Prodotto (SOLO CUSTOM)
+            showAddModal && (
+              e('div', { className: "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" },
+                e('div', { className: "bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" },
+                  e('h2', { className: "text-xl font-bold mb-4" }, 'Aggiungi Nuovo Prodotto (Personalizzato)'),
+                  
+                  e('div', { className: "space-y-4" },
+                    e('div', null,
+                      e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Nome Prodotto"),
+                      e('input', { 
+                        type: "text", 
+                        value: newProdName,
+                        onChange: (e) => setNewProdName(e.target.value),
+                        className: "w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500",
+                        placeholder: "Es. Taralli Finocchietto"
+                      })
+                    ),
+                    e('div', { className: "flex space-x-4" },
+                      e('div', { className: "w-1/2" },
+                        e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Peso/Descr. (Opz)"),
+                        e('input', { 
+                          type: "text", 
+                          value: newProdWeight,
+                          onChange: (e) => setNewProdWeight(e.target.value),
+                          className: "w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500",
+                          placeholder: "Es. 0,500"
+                        })
+                      ),
+                      e('div', { className: "w-1/2" },
+                        e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Unità"),
+                        e('select', { 
+                          value: newProdUnit,
+                          onChange: (e) => setNewProdUnit(e.target.value),
+                          className: "w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                        },
+                          e('option', { value: "pz" }, "pz"),
+                          e('option', { value: "kg" }, "kg")
+                        )
+                      )
+                    ),
+                    e('div', null,
+                      e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Categoria Assegnata:"),
+                      e('div', { className: "w-full bg-gray-100 border border-gray-300 rounded-lg p-2 text-sm text-gray-600" }, "Personalizzato / Altro")
+                    )
+                  ),
+
+                  e('div', { className: "mt-6 flex space-x-3" },
+                    e('button', { 
+                      onClick: () => setShowAddModal(false),
+                      className: "flex-1 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg"
+                    }, "Annulla"),
+                    e('button', { 
+                      onClick: handleSaveProduct,
+                      disabled: !newProdName,
+                      className: "flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold disabled:opacity-50 hover:bg-blue-700 transition"
+                    }, 'Aggiungi Prodotto')
+                  )
+                )
+              )
+            )
+
+          );
+        }
+        
+        // =================================================================
+        // COMPONENTE ITEM PRODOTTO
+        // =================================================================
+        function renderProductItem(product, updateQuantity, handleManualInput) {
+            const getFinalQuantity = (qty) => qty === '' || qty === 0 ? '' : qty;
+            
+            return e('div', { key: product.id, className: `bg-gray-50 p-3 rounded-lg shadow-sm border ${getFinalQuantity(product.defaultQty) !== '' ? 'border-blue-500 ring-1 ring-blue-100' : 'border-gray-200'} flex items-center justify-between` },
+                e('div', { className: "flex-1 pr-2" },
+                    e('h3', { className: "font-bold text-gray-800 text-base leading-tight" }, product.name),
+                    e('div', { className: "text-gray-500 text-xs mt-0.5" },
+                        // Mostra peso/descrizione solo se presente
+                        product.weight && e('span', { className: "mr-1" }, `P.re: ${product.weight}`),
+                        e('span', { className: "uppercase badge bg-gray-200 px-1.5 py-0.5 rounded-full text-xs font-medium" }, product.unit)
+                    )
+                ),
+                e('div', { className: "flex items-center space-x-2 bg-white rounded-lg p-1 border border-gray-200" },
+                    e('button', { 
+                        onClick: () => updateQuantity(product.id, -1),
+                        className: "w-8 h-8 flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg text-gray-600 active:bg-gray-200"
+                    }, e(Minus, { size: 16 })),
+                    
+                    e('input', { 
+                        type: "number", 
+                        value: product.defaultQty, 
+                        onChange: (e) => handleManualInput(product.id, e.target.value),
+                        className: "w-10 text-center font-bold text-lg bg-transparent focus:outline-none",
+                        style: { MozAppearance: 'textfield' }
+                    }),
+
+                    e('button', { 
+                        onClick: () => updateQuantity(product.id, 1),
+                        className: "w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg active:bg-blue-700 shadow-md"
+                    }, e(Plus, { size: 16 }))
+                )
+            );
+        }
+
+        // Inizializzazione dell'applicazione React
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(e(App, null));
+    </script>
+</body>
+</html>
