@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DDT Reso DEMA - Stabile</title>
+    <title>DDT Reso DEMA - Autosufficiente</title>
     <!-- Carica Tailwind CSS per lo styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -37,22 +37,109 @@
             /* Altezza riga ridotta per A4 */
             .print-row-h { height: 16px; }
         }
+        /* Nasconde le frecce per gli input di tipo number (solo per l'input di quantità) */
+        input[type='number']::-webkit-inner-spin-button, 
+        input[type='number']::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- React e ReactDOM (Non rimuoverli, sono essenziali per l'app) -->
+    <!-- React e ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
     <script>
         // Alias per React.createElement per rendere il codice più compatto
         const e = React.createElement;
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useCallback } = React;
         
         // =================================================================
-        // DEFINIZIONI SVG INLINE PER STABILITÀ (RIMOSSA DIPENDENZA ESTERNA)
+        // CONFIGURAZIONE PRODOTTI (INCORPORATA - LISTA AGGIORNATA CON LE TUE CATEGORIE)
+        // =================================================================
+        const PRODUCT_CONFIG_DATA = `
+        [PANE]
+        Impasto
+        Pagnotta 2,000
+        Pagnotta 1,000
+        Filone 1,000
+        Filone casareccio 0,700
+        Pagnotella 0,500
+        Sfilatino 0,500
+        Pagnotella integrale 0,500
+        Sfilatino integrale 0,500
+        Ciambella 1,000
+        Pizza col buco 0,400
+        Fruste 0,400
+        Baguette 0,300
+        Ciabattine lunghe 0,150
+        Ciabattine tonde 0,150
+        Francesino 0,150
+        Zoccoletto 0,120
+        Mignon 0,080
+        Mignon integrale 0,080
+        Pane senza sale 0,150
+        Pane di saraolla 0,500
+        Pane di saraolla Kg1 1,000
+        Pane rosso 0,500
+        Zzora 0,600
+        Pane di Segale 0,500
+        Pane Proteico
+        Tortani con cicole
+
+        [VETRINA]
+        Margherita
+        Marinara
+        Scarola
+        Broccoli/salsicce
+        Focaccia bianca
+        Parigina
+        Cornetti Vari Gusti
+        Ciambelle
+        Rusticini mignon
+        Rustici Grandi
+        Pizzette Mignon
+        focaccia pomodorini
+        focaccia pomodorini crud
+        calzone pomodoro
+        calzone prosciutto
+        pizza wurstel e patatine
+        pizza pomodorini e mozzarella
+        focaccia senza pomodori
+
+        [SCAFFALI]
+        La Biscotta Bian/Int
+        La Fresella Bian/Int
+        Fresella tonda Bian/Int
+        Crostini/Crostini s.sale
+        Tarallini monoporzione
+        Treccine/B. pizza
+        Taralli tipo margellina
+        Pan grattato (Pz)
+        Mollica per ripieni
+        Farina tipo "00"
+        Farina grano duro
+        Farina integrale
+        Farina di mais
+        Biscottini alle mandorle
+        Biscottini vari gusti
+        Pastarelle
+        Uova
+
+        [ALTRO]
+        Pan di spagna
+        Ancinetti/prussianine
+        Migliacci/Pastiere
+        Scaldati/Cresciuti
+        Casatiello/Pizza chiena
+        `;
+
+
+        // =================================================================
+        // DEFINIZIONI SVG INLINE PER STABILITÀ 
         // =================================================================
 
         const Icon = (svg, props) => e('svg', { 
@@ -74,246 +161,287 @@
         const Search = (props) => Icon(`<circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />`, props);
         const FilePlus = (props) => Icon(`<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" />`, props);
         const ArrowLeft = (props) => Icon(`<line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />`, props);
-        const Pencil = (props) => Icon(`<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />`, props);
         const MapPin = (props) => Icon(`<path d="M12 21.75l-4-4.5c-3.3-3.7-3.3-9.1 0-12.8 3.7-3.3 9.1-3.3 12.8 0 3.3 3.7 3.3 9.1 0 12.8l-4 4.5z" /><circle cx="12" cy="10" r="3" />`, props);
+        const ChevronDown = (props) => Icon(`<polyline points="6 9 12 15 18 9" />`, props);
 
 
-        // Funzione per inizializzare o caricare i prodotti salvati
-        const getInitialProducts = () => {
-            const INITIAL_PRODUCTS = [
-              // COLONNA SINISTRA (Pane e derivati freschi)
-              { id: 1, name: 'Impasto', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 2, name: 'Pagnotta', weight: '2,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 3, name: 'Pagnotta', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 4, name: 'Filone', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 5, name: 'Filone casareccio', weight: '0,700', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 6, name: 'Pagnotella', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 7, name: 'Sfilatino', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 8, name: 'Pagnotella integrale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 9, name: 'Sfilatino integrale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 10, name: 'Ciambella', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 11, name: 'Pizza col buco', weight: '0,400', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 12, name: 'Fruste', weight: '0,400', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 13, name: 'Baguette', weight: '0,300', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 14, name: 'Ciabattine lunghe', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 15, name: 'Ciabattine tonde', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 16, name: 'Francesino', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 17, name: 'Zoccoletto', weight: '0,120', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 18, name: 'Mignon', weight: '0,080', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 19, name: 'Mignon integrale', weight: '0,080', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 20, name: 'Pane senza sale', weight: '0,150', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 21, name: 'Pane di saraolla', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 22, name: 'Pane di saraolla Kg1', weight: '1,000', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 23, name: 'Pane rosso', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 24, name: 'Zzora', weight: '0,600', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 25, name: 'Pane di Segale', weight: '0,500', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 26, name: 'Tortani con cicole', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 27, name: 'Pane Proteico', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 28, name: 'Margherita', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 29, name: 'Marinara', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 30, name: 'Scarola', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 31, name: 'Broccoli/salsicce', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 32, name: 'Focaccia bianca', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 33, name: 'Parigina', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 34, name: 'Cornetti Vari Gusti', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 35, name: 'Ciambelle', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 36, name: 'Rusticini mignon', weight: '', unit: 'kg', category: 'fresh', defaultQty: 0 },
-              { id: 37, name: 'Rustici Grandi', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 38, name: 'Pizzette Mignon', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 39, name: 'focaccia pomodorini', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-              { id: 40, name: 'focaccia pomodorini crud', weight: '', unit: 'pz', category: 'fresh', defaultQty: 0 },
-
-              // COLONNA DESTRA (Secchi, Farine, Dolci)
-              { id: 50, name: 'La Biscotta Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 51, name: 'La Fresella Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 52, name: 'Fresella tonda Bian/Int', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 53, name: 'Crostini/Crostini s.sale', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 54, name: 'Tarallini monoporzione', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 55, name: 'Treccine/B. pizza', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 56, name: 'Taralli tipo margellina', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 57, name: 'Pan grattato', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 58, name: 'Pan grattato', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 59, name: 'Mollica per ripieni', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 60, name: 'Farina tipo "00"', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 61, name: 'Farina grano duro', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 62, name: 'Farina integrale', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 63, name: 'Farina di mais', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 64, name: 'Biscottini alle mandorle', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 65, name: 'Biscottini vari gusti', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 66, name: 'Pan di spagna', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 67, name: 'Pastarelle', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 68, name: 'Ancinetti/prussianine', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 69, name: 'Migliacci/Pastiere', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 70, name: 'Scaldati/Cresciuti', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 71, name: 'Casatiello/Pizza chiena', weight: '', unit: 'kg', category: 'dry', defaultQty: 0 },
-              { id: 72, name: 'Uova', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 73, name: 'calzone pomodoro', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 74, name: 'calzone prosciutto', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 75, name: 'pizza wurstel e patatine', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 76, name: 'pizza pomodorini e mozzarella', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-              { id: 77, name: 'focaccia senza pomodori', weight: '', unit: 'pz', category: 'dry', defaultQty: 0 },
-            ];
-            
+        // =================================================================
+        // FUNZIONI DI GESTIONE DATI LOCALI E CONFIGURAZIONE
+        // =================================================================
+        
+        // Funzione per PARSARE i prodotti dalla stringa di configurazione interna
+        const parseConfigProducts = () => {
             try {
-                const savedProducts = localStorage.getItem('ddt_products');
-                if (savedProducts) {
-                    const parsedProducts = JSON.parse(savedProducts);
-                    const initialMap = new Map(INITIAL_PRODUCTS.map(p => [p.id, p]));
+                const lines = PRODUCT_CONFIG_DATA.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+                let currentCategory = null;
+                // Assegnazione degli ID sequenziali per le nuove categorie definite dall'utente
+                let paneId = 1; 
+                let vetrinaId = 50; 
+                let scaffaliId = 100;
+                let altroId = 150;
+                const products = [];
+
+                for (const line of lines) {
+                    // Imposta la categoria corrente
+                    if (line.startsWith('[PANE]')) {
+                        currentCategory = 'PANE';
+                        continue;
+                    } else if (line.startsWith('[VETRINA]')) {
+                        currentCategory = 'VETRINA';
+                        continue;
+                    } else if (line.startsWith('[SCAFFALI]')) {
+                        currentCategory = 'SCAFFALI';
+                        continue;
+                    } else if (line.startsWith('[ALTRO]')) {
+                        currentCategory = 'ALTRO';
+                        continue;
+                    }
                     
-                    const combinedProducts = parsedProducts.map(p => {
-                      if(initialMap.has(p.id)){
-                        // Usa il nome/peso originale, ma mantieni la quantità salvata
-                        return { ...initialMap.get(p.id), defaultQty: p.defaultQty === '' ? '' : (parseInt(p.defaultQty) || 0) };
-                      }
-                      // Prodotto custom
-                      return { ...p, defaultQty: p.defaultQty === '' ? '' : (parseInt(p.defaultQty) || 0), category: p.category || 'custom' };
-                    });
+                    if (currentCategory && line) {
+                        
+                        let id, unit, weight, name;
+                        
+                        // Logica di PARSING per categorie PANE e VETRINA (fresh/display)
+                        if (currentCategory === 'PANE' || currentCategory === 'VETRINA') {
+                            id = currentCategory === 'PANE' ? paneId++ : vetrinaId++;
+                            unit = 'pz';
+                            
+                            // Tenta di estrarre il peso in formato 'x,xxx' se presente alla fine della riga
+                            const match = line.match(/^(.*)\s(\d+,\d{3})$/);
+                            if (match) {
+                                name = match[1].trim();
+                                weight = match[2];
+                            } else {
+                                weight = '';
+                                name = line;
+                            }
+                        
+                        // Logica di PARSING per categorie SCAFFALI e ALTRO (dry/miscellaneous)
+                        } else if (currentCategory === 'SCAFFALI' || currentCategory === 'ALTRO') {
+                            id = currentCategory === 'SCAFFALI' ? scaffaliId++ : altroId++;
+                            weight = '';
+                            unit = 'kg'; // Default
+                            name = line;
 
-                    // Aggiunge i prodotti iniziali che non erano presenti nei salvataggi (per gli aggiornamenti)
-                    const savedIds = new Set(combinedProducts.map(p => p.id));
-                    INITIAL_PRODUCTS.forEach(p => {
-                        if (!savedIds.has(p.id)) {
-                            combinedProducts.push(p);
+                            // Verifica se l'unità è specificata tra parentesi (es. Pan grattato (Pz))
+                            if (line.includes('(Pz)')) {
+                                unit = 'pz';
+                                name = line.replace('(Pz)', '').trim();
+                            } else if (line.includes('(Kg)')) {
+                                // Mantiene kg ma rimuove la notazione
+                                name = line.replace('(Kg)', '').trim();
+                            }
+                        } else {
+                            // Ignora linee non pertinenti o categorie non mappate
+                            continue;
                         }
-                    });
 
-                    return combinedProducts
-                        .sort((a, b) => a.id - b.id);
+                        products.push({
+                            id,
+                            name,
+                            weight,
+                            unit,
+                            category: currentCategory.toLowerCase(), // Memorizza in minuscolo per uso interno
+                            defaultQty: 0
+                        });
+                    }
                 }
+                
+                console.log(`Prodotti caricati e generati dalla configurazione interna. Trovati ${products.length} prodotti.`);
+                return products.sort((a, b) => a.id - b.id);
+                
             } catch (error) {
-                console.error("Errore nel caricamento da localStorage:", error);
-                // Se c'è un errore nel parsing, ritorna i prodotti iniziali
-                return INITIAL_PRODUCTS;
+                console.error("Errore nel parsing della lista di prodotti interna:", error);
+                // Ritorna una lista vuota in caso di errore grave
+                return []; 
             }
-            return INITIAL_PRODUCTS;
         };
 
-        const saveProducts = (products) => {
+        const getLocalQuantities = () => {
             try {
-                const dataToSave = products.map(p => ({
-                    id: p.id, 
-                    name: p.name, 
-                    weight: p.weight,
-                    unit: p.unit,
-                    category: p.category,
-                    defaultQty: p.defaultQty
-                }));
-                localStorage.setItem('ddt_products', JSON.stringify(dataToSave));
+                const savedQuantities = localStorage.getItem('ddt_quantities');
+                return savedQuantities ? JSON.parse(savedQuantities) : {};
             } catch (error) {
-                console.error("Errore nel salvataggio in localStorage:", error);
+                console.error("Errore nel caricamento delle quantità locali:", error);
+                return {};
             }
         };
 
+        const saveLocalQuantities = (products) => {
+            try {
+                const quantitiesToSave = products
+                    .filter(p => p.defaultQty !== '' && p.defaultQty !== 0)
+                    .reduce((acc, p) => {
+                        acc[p.id] = p.defaultQty;
+                        return acc;
+                    }, {});
+                localStorage.setItem('ddt_quantities', JSON.stringify(quantitiesToSave));
+                return true;
+            } catch (error) {
+                console.error("Errore nel salvataggio delle quantità in localStorage:", error);
+                return false;
+            }
+        };
+
+
+        // =================================================================
+        // COMPONENTE PRINCIPALE DELL'APPLICAZIONE
+        // =================================================================
 
         function App() {
-          const [products, setProducts] = useState(getInitialProducts);
-          const [view, setView] = useState('input');
+          const [products, setProducts] = useState([]);
+          const [isLoading, setIsLoading] = useState(true);
+          const [view, setView] = useState('input'); // 'input', 'preview'
           const [searchTerm, setSearchTerm] = useState('');
           const [currentLocation, setCurrentLocation] = useState(localStorage.getItem('ddt_location') || 'benevento');
           
           const [showAddModal, setShowAddModal] = useState(false);
-          const [editingId, setEditingId] = useState(null);
           
           const [newProdName, setNewProdName] = useState('');
           const [newProdWeight, setNewProdWeight] = useState('');
           const [newProdUnit, setNewProdUnit] = useState('pz');
+          
+          const [collapsedCategories, setCollapsedCategories] = useState({ pane: false, vetrina: false, scaffali: false, altro: false, custom: false }); 
 
-          // Controlla che gli ID dei prodotti custom siano alti per evitare collisioni
-          const nextCustomId = products.reduce((max, p) => p.id > 1000 ? Math.max(max, p.id) : 1000, 1000) + 1;
-
-
+          // 1. Caricamento Iniziale della configurazione interna e delle quantità da localStorage
           useEffect(() => {
-              saveProducts(products);
+              const initializeProducts = () => {
+                  const configProducts = parseConfigProducts();
+                  const localQuantities = getLocalQuantities();
+                  
+                  // Applica le quantità salvate localmente alla lista prodotti configurata
+                  const initialProducts = configProducts.map(p => ({
+                      ...p,
+                      // Cerca la quantità salvata per l'ID del prodotto corrente
+                      defaultQty: localQuantities[p.id] !== undefined ? localQuantities[p.id] : p.defaultQty
+                  }));
+                  
+                  setProducts(initialProducts);
+                  setIsLoading(false);
+              };
+              initializeProducts();
+          }, []);
+
+
+          // 2. Salvataggio in localStorage (solo delle quantità e della location)
+          useEffect(() => {
+              if (products.length > 0) {
+                  saveLocalQuantities(products);
+              }
               localStorage.setItem('ddt_location', currentLocation);
           }, [products, currentLocation]);
+
+          // Ottiene l'ID custom più alto per assegnare il prossimo
+          // Usiamo un range ID > 1000 per i prodotti aggiunti a mano
+          const nextCustomId = products.reduce((max, p) => p.id >= 1000 ? Math.max(max, p.id) : 1000, 1000) + 1;
 
           const locationDetails = {
             benevento: { sede: 'Via Napoli', citta: 'Benevento' },
             montesarchio: { sede: 'Via Giovanni Amendola', citta: 'Montesarchio (BN)' }
           };
 
-          const updateQuantity = (id, delta) => {
+          const updateQuantity = useCallback((id, delta) => {
             setProducts(prev => prev.map(p => {
               if (p.id === id) {
                 const currentQty = parseInt(p.defaultQty) || 0;
                 const newQty = Math.max(0, currentQty + delta);
-                // Ritorna una stringa vuota per 0 per facilitare il check
                 return { ...p, defaultQty: newQty === 0 ? '' : newQty };
               }
               return p;
             }));
-          };
+          }, []);
 
-          const handleManualInput = (id, value) => {
-            // Assicura che l'input sia un numero o una stringa vuota
+          const handleManualInput = useCallback((id, value) => {
+            // Permette stringa vuota ('') o un numero
             const qty = value === '' ? '' : (parseInt(value) || 0); 
             setProducts(prev => prev.map(p => p.id === id ? { ...p, defaultQty: qty } : p));
-          };
+          }, []);
           
           const getFinalQuantity = (qty) => {
-              // Ritorna stringa vuota per la stampa se la quantità è 0 o vuota
               return qty === '' || qty === 0 ? '' : qty;
           }
 
           const openAddModal = () => {
-            setEditingId(null);
             setNewProdName('');
             setNewProdWeight('');
             setNewProdUnit('pz');
             setShowAddModal(true);
           };
 
-          const openEditModal = (product) => {
-            setEditingId(product.id);
-            setNewProdName(product.name);
-            setNewProdWeight(product.weight);
-            setNewProdUnit(product.unit);
-            setShowAddModal(true);
-          };
 
           const handleSaveProduct = () => {
+            // Questa funzione permette SOLO l'aggiunta di prodotti CUSTOM (ID > 1000)
             if (!newProdName) return;
 
-            if (editingId !== null) {
-              setProducts(prev => prev.map(p => 
-                p.id === editingId 
-                  ? { ...p, name: newProdName, weight: newProdWeight, unit: newProdUnit }
-                  : p
-              ));
-            } else {
-              const newProduct = {
-                id: nextCustomId, // Usa l'ID calcolato
+            const newProduct = {
+                id: nextCustomId, 
                 name: newProdName,
                 weight: newProdWeight,
                 unit: newProdUnit,
-                category: 'custom',
+                category: 'custom', // I prodotti aggiunti qui sono sempre Custom (ALTRO/Personalizzato)
                 defaultQty: 1
-              };
-              // Aggiunge e riordina per ID per mantenere i custom in fondo
-              setProducts(prev => [...prev, newProduct].sort((a, b) => a.id - b.id));
-            }
+            };
+            setProducts(prev => [...prev, newProduct].sort((a, b) => a.id - b.id));
 
             setShowAddModal(false);
-            setEditingId(null);
             setNewProdName('');
             setNewProdWeight('');
           };
 
+          // Filtro e raggruppamento per la vista 'input'
           const filteredProducts = products.filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase())
           );
+          
+          // Raggruppa i prodotti solo se la ricerca non è attiva
+          const productsToDisplay = searchTerm === '' ? products : filteredProducts;
+          
+          const groupedProducts = productsToDisplay.reduce((acc, p) => {
+            const category = p.category || 'pane';
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+            acc[category].push(p);
+            return acc;
+          }, {});
+          
+          // Ordine delle categorie definite dall'utente + la custom
+          const categoriesOrder = ['pane', 'vetrina', 'scaffali', 'altro', 'custom'];
 
+          const getCategoryTitle = (category) => {
+            switch (category) {
+                case 'pane': return 'PANE';
+                case 'vetrina': return 'VETRINA';
+                case 'scaffali': return 'SCAFFALI';
+                case 'altro': return 'ALTRO';
+                case 'custom': return 'Prodotti Personalizzati';
+                default: return 'Altro';
+            }
+          };
+
+          const toggleCollapse = (category) => {
+            setCollapsedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+          };
+          
           const today = new Date().toLocaleDateString('it-IT');
 
-          const col1 = products.filter(p => p.category === 'fresh').sort((a, b) => a.id - b.id);
-          const printCol2 = products.filter(p => p.category === 'dry' || p.category === 'custom').sort((a, b) => a.id - b.id);
+          // Prodotti per la stampa (colonne fisse)
+          // Colonna 1: PANE (Articoli freschi principali)
+          const allPane = products.filter(p => p.category === 'pane').sort((a, b) => a.id - b.id);
+          // Colonna 2: VETRINA, SCAFFALI, ALTRO, CUSTOM (Tutti gli altri)
+          const allOthers = products.filter(p => p.category !== 'pane').sort((a, b) => a.id - b.id);
+
+          // Filtra solo i prodotti con quantità > 0 per la stampa
+          const col1 = allPane.filter(p => getFinalQuantity(p.defaultQty) !== '');
+          const printCol2 = allOthers.filter(p => getFinalQuantity(p.defaultQty) !== '');
 
           const totalPrintableRows = 45;
           const rowsCol1 = col1.length;
           const rowsCol2 = printCol2.length;
           
           const emptyRowsLeft = Math.max(0, totalPrintableRows - rowsCol1);
-          // La colonna di destra ha una riga in meno perché c'è il blocco "Il conducente" sotto la tabella
+          // La colonna di destra ha una riga in meno
           const emptyRowsRight = Math.max(0, totalPrintableRows - 1 - rowsCol2); 
 
 
@@ -321,7 +449,13 @@
             window.print();
           };
 
-          // --- VISTA ANTEPRIMA / STAMPA ---
+          if (isLoading) {
+              return e('div', { className: "flex items-center justify-center min-h-screen text-lg font-semibold text-blue-600" }, "Caricamento lista prodotti...");
+          }
+
+          // =================================================================
+          // VISTA ANTEPRIMA / STAMPA
+          // =================================================================
           if (view === 'preview') {
             const currentLoc = locationDetails[currentLocation];
             
@@ -410,7 +544,7 @@
 
                 // GRIGLIA PRODOTTI
                 e('div', { className: "grid grid-cols-2 print:grid-cols-2 gap-0 border-2 border-t-0 border-black items-start" },
-                  // COLONNA SINISTRA (Pane e derivati freschi)
+                  // COLONNA SINISTRA (PANE)
                   e('div', { className: "print:border-r print:border-black" },
                     e('table', { className: "w-full text-[8px] border-collapse print:text-[10pt]" },
                       e('thead', null,
@@ -428,7 +562,7 @@
                     )
                   ),
 
-                  // COLONNA DESTRA (Secchi, Farine, Dolci e Prodotti personalizzati)
+                  // COLONNA DESTRA (VETRINA, SCAFFALI, ALTRO, CUSTOM)
                   e('div', null,
                     e('table', { className: "w-full text-[8px] border-collapse print:text-[10pt]" },
                       e('thead', null,
@@ -454,7 +588,9 @@
             );
           }
 
-          // --- VISTA INPUT (MOBILE) ---
+          // =================================================================
+          // VISTA INPUT (DEFAULT)
+          // =================================================================
           return e('div', { className: "bg-gray-50 min-h-screen pb-24 font-sans" },
             // App Bar
             e('div', { className: "bg-blue-700 text-white p-4 sticky top-0 z-20 shadow-lg" },
@@ -471,61 +607,69 @@
               )
             ),
 
-            // Lista Prodotti
-            e('div', { className: "p-4 space-y-3" },
-              filteredProducts.map(product => e('div', { key: product.id, className: `bg-white p-4 rounded-xl shadow-sm border ${getFinalQuantity(product.defaultQty) !== '' ? 'border-blue-500 ring-1 ring-blue-100' : 'border-gray-200'} flex items-center justify-between` },
+            // Lista Prodotti raggruppati per categoria
+            e('div', { className: "p-4 space-y-5" },
+              categoriesOrder.map(category => {
+                const productsInCategory = groupedProducts[category] || [];
+                const isCollapsed = collapsedCategories[category];
                 
-                e('div', { className: "flex-1 pr-2" },
-                  e('div', { className: "flex items-center gap-2" },
-                    e('h3', { className: "font-bold text-gray-800 text-lg leading-tight" }, product.name),
-                    // Tasto Modifica (Matita)
-                    e('button', { 
-                      onClick: () => openEditModal(product), 
-                      className: "p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition",
-                      title: "Modifica nome o peso"
-                    }, e(Pencil, { size: 16 })),
+                // Mostra la categoria solo se ci sono prodotti O se non è attiva la ricerca
+                if (productsInCategory.length === 0 && searchTerm !== '' && category !== 'custom') return null; 
+                
+                // Se la ricerca è attiva, mostra solo i risultati filtrati in un unico blocco
+                if (searchTerm !== '') {
+                    if (category !== categoriesOrder[0]) return null; 
+
+                    const allFiltered = filteredProducts.map(product => renderProductItem(product, updateQuantity, handleManualInput));
+
+                    return e('div', { key: 'search-results', className: "bg-white rounded-xl shadow-lg overflow-hidden" },
+                        e('div', { className: "w-full flex justify-between items-center p-4 bg-gray-200" },
+                            e('h2', { className: "text-lg font-bold text-gray-800" }, `Risultati Ricerca (${filteredProducts.length})`)
+                        ),
+                        e('div', { className: "p-3 space-y-3" }, allFiltered)
+                    );
+                }
+
+
+                // Vista raggruppata per categoria
+                return e('div', { key: category, className: "bg-white rounded-xl shadow-lg overflow-hidden" },
+                  // Header Categoria
+                  e('button', {
+                    onClick: () => toggleCollapse(category),
+                    className: "w-full flex justify-between items-center p-4 bg-blue-100 hover:bg-blue-200 transition"
+                  },
+                    e('h2', { className: "text-lg font-bold text-blue-800" }, getCategoryTitle(category)),
+                    e(ChevronDown, { 
+                      size: 24, 
+                      className: `text-blue-600 transition-transform duration-300 ${isCollapsed ? '' : 'rotate-180'}` 
+                    })
                   ),
-                  e('div', { className: "text-gray-500 text-sm mt-1" },
-                    product.weight && e('span', null, `${product.weight} `),
-                    e('span', { className: "uppercase badge bg-gray-100 px-2 py-0.5 rounded text-xs" }, product.unit)
+
+                  // Lista Prodotti
+                  !isCollapsed && e('div', { className: "p-3 space-y-3" },
+                    productsInCategory.map(product => renderProductItem(product, updateQuantity, handleManualInput))
                   )
-                ),
-
-                e('div', { className: "flex items-center space-x-3 bg-gray-50 rounded-lg p-1" },
-                  e('button', { 
-                    onClick: () => updateQuantity(product.id, -1),
-                    className: "w-10 h-10 flex items-center justify-center bg-white border border-gray-300 rounded-lg text-gray-600 active:bg-gray-200"
-                  }, e(Minus, { size: 20 })),
-                  
-                  e('input', { 
-                    type: "number", 
-                    value: product.defaultQty, 
-                    onChange: (e) => handleManualInput(product.id, e.target.value),
-                    className: "w-12 text-center font-bold text-xl bg-transparent focus:outline-none"
-                  }),
-
-                  e('button', { 
-                    onClick: () => updateQuantity(product.id, 1),
-                    className: "w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-lg active:bg-blue-700 shadow-md"
-                  }, e(Plus, { size: 20 }))
                 )
-              )),
-              filteredProducts.length === 0 && (
+              }),
+
+              // Messaggio se non ci sono prodotti (dopo il filtro)
+              (searchTerm !== '' && filteredProducts.length === 0) && (
                 e('div', { className: "text-center py-10 text-gray-500" },
-                  "Nessun prodotto trovato. ",
-                  e('br', null),
-                  e('button', { onClick: openAddModal, className: "text-blue-600 font-bold underline mt-2" }, "Aggiungilo ora")
+                  "Nessun prodotto trovato. Prova una ricerca diversa o ",
+                  e('button', { onClick: openAddModal, className: "text-blue-600 font-bold underline mt-2" }, "aggiungine uno nuovo (personalizzato)")
                 )
               )
             ),
 
             // Floating Action Buttons
             e('div', { className: "fixed bottom-6 right-6 flex flex-col space-y-4 z-30" },
+              
               e('button', { 
                 onClick: openAddModal,
                 className: "w-14 h-14 bg-green-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-green-600 transition",
-                title: "Aggiungi Nuovo Prodotto"
+                title: "Aggiungi Nuovo Prodotto Personalizzato"
               }, e(FilePlus, { size: 24 })),
+              
               e('button', { 
                 onClick: () => setView('preview'),
                 className: "bg-blue-900 text-white px-6 py-4 rounded-full shadow-xl font-bold flex items-center space-x-2 hover:bg-blue-800 transition"
@@ -535,13 +679,11 @@
               )
             ),
 
-            // Modal Aggiungi/Modifica Prodotto
+            // Modal Aggiungi Prodotto (SOLO CUSTOM)
             showAddModal && (
               e('div', { className: "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" },
                 e('div', { className: "bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" },
-                  e('h2', { className: "text-xl font-bold mb-4" },
-                    editingId !== null ? 'Modifica Prodotto' : 'Aggiungi Nuovo Prodotto'
-                  ),
+                  e('h2', { className: "text-xl font-bold mb-4" }, 'Aggiungi Nuovo Prodotto (Personalizzato)'),
                   
                   e('div', { className: "space-y-4" },
                     e('div', null,
@@ -550,32 +692,36 @@
                         type: "text", 
                         value: newProdName,
                         onChange: (e) => setNewProdName(e.target.value),
-                        className: "w-full border border-gray-300 rounded-lg p-2",
+                        className: "w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500",
                         placeholder: "Es. Taralli Finocchietto"
                       })
                     ),
                     e('div', { className: "flex space-x-4" },
-                      e('div', { className: "flex-1" },
+                      e('div', { className: "w-1/2" },
                         e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Peso/Descr. (Opz)"),
                         e('input', { 
                           type: "text", 
                           value: newProdWeight,
                           onChange: (e) => setNewProdWeight(e.target.value),
-                          className: "w-full border border-gray-300 rounded-lg p-2",
+                          className: "w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500",
                           placeholder: "Es. 0,500"
                         })
                       ),
-                      e('div', { className: "w-1/3" },
+                      e('div', { className: "w-1/2" },
                         e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Unità"),
                         e('select', { 
                           value: newProdUnit,
                           onChange: (e) => setNewProdUnit(e.target.value),
-                          className: "w-full border border-gray-300 rounded-lg p-2"
+                          className: "w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                         },
                           e('option', { value: "pz" }, "pz"),
                           e('option', { value: "kg" }, "kg")
                         )
                       )
+                    ),
+                    e('div', null,
+                      e('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Categoria Assegnata:"),
+                      e('div', { className: "w-full bg-gray-100 border border-gray-300 rounded-lg p-2 text-sm text-gray-600" }, "Personalizzato / Altro")
                     )
                   ),
 
@@ -587,14 +733,51 @@
                     e('button', { 
                       onClick: handleSaveProduct,
                       disabled: !newProdName,
-                      className: "flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold disabled:opacity-50 hover:bg-blue-700"
-                    }, editingId !== null ? 'Salva Modifiche' : 'Aggiungi')
+                      className: "flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold disabled:opacity-50 hover:bg-blue-700 transition"
+                    }, 'Aggiungi Prodotto')
                   )
                 )
               )
             )
 
           );
+        }
+        
+        // =================================================================
+        // COMPONENTE ITEM PRODOTTO
+        // =================================================================
+        function renderProductItem(product, updateQuantity, handleManualInput) {
+            const getFinalQuantity = (qty) => qty === '' || qty === 0 ? '' : qty;
+            
+            return e('div', { key: product.id, className: `bg-gray-50 p-3 rounded-lg shadow-sm border ${getFinalQuantity(product.defaultQty) !== '' ? 'border-blue-500 ring-1 ring-blue-100' : 'border-gray-200'} flex items-center justify-between` },
+                e('div', { className: "flex-1 pr-2" },
+                    e('h3', { className: "font-bold text-gray-800 text-base leading-tight" }, product.name),
+                    e('div', { className: "text-gray-500 text-xs mt-0.5" },
+                        // Mostra peso/descrizione solo se presente
+                        product.weight && e('span', { className: "mr-1" }, `P.re: ${product.weight}`),
+                        e('span', { className: "uppercase badge bg-gray-200 px-1.5 py-0.5 rounded-full text-xs font-medium" }, product.unit)
+                    )
+                ),
+                e('div', { className: "flex items-center space-x-2 bg-white rounded-lg p-1 border border-gray-200" },
+                    e('button', { 
+                        onClick: () => updateQuantity(product.id, -1),
+                        className: "w-8 h-8 flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg text-gray-600 active:bg-gray-200"
+                    }, e(Minus, { size: 16 })),
+                    
+                    e('input', { 
+                        type: "number", 
+                        value: product.defaultQty, 
+                        onChange: (e) => handleManualInput(product.id, e.target.value),
+                        className: "w-10 text-center font-bold text-lg bg-transparent focus:outline-none",
+                        style: { MozAppearance: 'textfield' }
+                    }),
+
+                    e('button', { 
+                        onClick: () => updateQuantity(product.id, 1),
+                        className: "w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg active:bg-blue-700 shadow-md"
+                    }, e(Plus, { size: 16 }))
+                )
+            );
         }
 
         // Inizializzazione dell'applicazione React
